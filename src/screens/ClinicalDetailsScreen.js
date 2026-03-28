@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,25 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { FormInput, Button, Card } from '../components';
 import { useTransfer } from '../context/TransferContext';
+import VoiceDictationModal from '../components/VoiceDictationModal';
 
 export const ClinicalDetailsScreen = ({ onNext, onBack }) => {
   const {
     state,
+    setPatientName,
+    setPatientAge,
     setPatientGender,
     setPatientDateOfBirth,
     setPatientPhone,
     setPatientAddress,
+    setAllergies,
+    setMedications,
+    setTransferReason,
     setPrimaryDiagnosis,
     setVital,
     setPendingInvestigations,
@@ -32,6 +39,11 @@ export const ClinicalDetailsScreen = ({ onNext, onBack }) => {
     setEscortName,
     setEscortQualification,
   } = useTransfer();
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+
+  const summaryWordCount = state.clinicalSummary
+    ? state.clinicalSummary.trim().split(/\s+/).filter(Boolean).length
+    : 0;
 
   const handleNext = () => {
     onNext();
@@ -165,15 +177,35 @@ export const ClinicalDetailsScreen = ({ onNext, onBack }) => {
             multiline
             numberOfLines={2}
           />
-          <FormInput
-            label="Clinical Summary (max 200 chars)"
+          <View style={styles.summaryHeaderRow}>
+            <Text style={styles.summaryLabel}>Clinical Summary</Text>
+            <TouchableOpacity style={styles.dictateButton} onPress={() => setShowVoiceModal(true)}>
+              <Text style={styles.dictateEmoji}>🎤</Text>
+              <Text style={styles.dictateButtonText}>Dictate</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.summaryInput}
             placeholder="Short handoff summary"
+            placeholderTextColor={COLORS.textHint}
             value={state.clinicalSummary}
             onChangeText={(text) => setClinicalSummary(text.slice(0, 200))}
             multiline
             numberOfLines={4}
+            textAlignVertical="top"
           />
-          <Text style={styles.charCounter}>{state.clinicalSummary.length}/200</Text>
+          <Text
+            style={[
+              styles.wordCounter,
+              summaryWordCount > 190
+                ? styles.wordCounterHigh
+                : summaryWordCount > 160
+                  ? styles.wordCounterMid
+                  : styles.wordCounterLow,
+            ]}
+          >
+            {summaryWordCount}/200 words
+          </Text>
 
           <Text style={styles.sectionTitle}>Transfer Logistics</Text>
           
@@ -257,6 +289,62 @@ export const ClinicalDetailsScreen = ({ onNext, onBack }) => {
           style={styles.halfButton}
         />
       </View>
+
+      <VoiceDictationModal
+        visible={showVoiceModal}
+        existingText={state.clinicalSummary}
+        onClose={() => setShowVoiceModal(false)}
+        onConfirm={(summary, autoFilledFields) => {
+          setClinicalSummary(summary);
+
+          if (autoFilledFields) {
+            if (!state.patientName && autoFilledFields.patientName) {
+              setPatientName(autoFilledFields.patientName);
+            }
+            if (!state.patientAge && autoFilledFields.age) {
+              setPatientAge(String(autoFilledFields.age));
+            }
+            if (!state.patientGender && autoFilledFields.gender) {
+              setPatientGender(autoFilledFields.gender);
+            }
+
+            if (!state.primaryDiagnosis && autoFilledFields.primaryDiagnosis) {
+              setPrimaryDiagnosis(autoFilledFields.primaryDiagnosis);
+            }
+            if (!state.transferReason && autoFilledFields.transferReason) {
+              setTransferReason(autoFilledFields.transferReason);
+            }
+
+            if ((!state.allergies || state.allergies.length === 0) && Array.isArray(autoFilledFields.allergies)) {
+              setAllergies(autoFilledFields.allergies);
+            }
+
+            if ((!state.medications || state.medications.length === 0) && Array.isArray(autoFilledFields.medications)) {
+              const medicationNames = autoFilledFields.medications
+                .map((med) => {
+                  if (typeof med === 'string') return med;
+                  return med?.name || '';
+                })
+                .filter(Boolean);
+              if (medicationNames.length > 0) {
+                setMedications(medicationNames);
+              }
+            }
+
+            if (!state.vitals?.bloodPressure && autoFilledFields.bp) {
+              setVital('bloodPressure', autoFilledFields.bp);
+            }
+            if (!state.vitals?.heartRate && autoFilledFields.pulse) {
+              setVital('heartRate', String(autoFilledFields.pulse));
+            }
+            if (!state.vitals?.oxygenSaturation && autoFilledFields.spo2) {
+              setVital('oxygenSaturation', String(autoFilledFields.spo2));
+            }
+          }
+
+          setShowVoiceModal(false);
+        }}
+      />
     </View>
   );
 };
@@ -292,12 +380,62 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     marginTop: SPACING.sm,
   },
-  charCounter: {
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  summaryLabel: {
+    ...TYPOGRAPHY.body2,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  dictateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 999,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+  },
+  dictateEmoji: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  dictateButtonText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  summaryInput: {
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+    borderRadius: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    minHeight: 120,
+    ...TYPOGRAPHY.body2,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.white,
+    marginBottom: SPACING.xs,
+  },
+  wordCounter: {
+    ...TYPOGRAPHY.caption,
     textAlign: 'right',
-    marginTop: -SPACING.sm,
     marginBottom: SPACING.md,
+  },
+  wordCounterLow: {
+    color: COLORS.textSecondary,
+  },
+  wordCounterMid: {
+    color: '#D97706',
+  },
+  wordCounterHigh: {
+    color: COLORS.error,
+    fontWeight: '700',
   },
   switchRow: {
     flexDirection: 'row',
