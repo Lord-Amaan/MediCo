@@ -3,7 +3,7 @@
 // Copy these directly into your App.js
 // ============================================================================
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,33 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
 import axios from 'axios';
+import HomePage from './components/HomePage';
 
 const API_URL = 'http://192.168.YOUR.IP:5000'; // UPDATE THIS
 
 export default function App() {
-  const [screen, setScreen] = useState('form');
+  const [screen, setScreen] = useState('home');
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
+  const hasInitializedRoute = useRef(false);
+
+  useEffect(() => {
+    if (!hasInitializedRoute.current) {
+      hasInitializedRoute.current = true;
+      setScreen('home');
+    }
+  }, [screen]);
+
+  const BackToHomeButton = ({ floating = false }) => (
+    <TouchableOpacity
+      style={floating ? styles.homeArrowFloating : styles.homeArrowButton}
+      onPress={() => setScreen('home')}
+    >
+      <Text style={floating ? styles.homeArrowTextLight : styles.homeArrowText}>
+        {'< Back to Home'}
+      </Text>
+    </TouchableOpacity>
+  );
 
   // ============================================================================
   // COMPONENT 1: TRANSFER FORM SCREEN
@@ -70,6 +90,8 @@ export default function App() {
 
     return (
       <ScrollView style={styles.container}>
+        <BackToHomeButton />
+
         {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>📋 Patient Transfer</Text>
@@ -208,6 +230,8 @@ export default function App() {
 
     return (
       <View style={styles.container}>
+        <BackToHomeButton />
+
         <View style={styles.header}>
           <Text style={styles.headerTitle}>✓ QR Code Ready</Text>
           <Text style={styles.headerSubtitle}>Print or screenshot this</Text>
@@ -263,6 +287,7 @@ export default function App() {
     if (!permission) {
       return (
         <View style={styles.container}>
+          <BackToHomeButton />
           <Text>Requesting camera permission...</Text>
         </View>
       );
@@ -271,6 +296,7 @@ export default function App() {
     if (!permission.granted) {
       return (
         <View style={styles.container}>
+          <BackToHomeButton />
           <Text style={styles.title}>Camera permission required</Text>
           <TouchableOpacity
             style={styles.button}
@@ -295,6 +321,8 @@ export default function App() {
 
     return (
       <View style={styles.cameraContainer}>
+        <BackToHomeButton floating />
+
         <CameraView
           style={styles.camera}
           onBarcodeScanned={handleBarcodeScan}
@@ -359,6 +387,8 @@ export default function App() {
 
     return (
       <ScrollView style={styles.container}>
+        <BackToHomeButton />
+
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🏥 Receiving Hospital</Text>
           <Text style={styles.headerSubtitle}>Patient Transfer</Text>
@@ -465,6 +495,12 @@ export default function App() {
   // ============================================================================
   return (
     <>
+      {screen === 'home' && (
+        <HomePage
+          onStartTransfer={() => setScreen('form')}
+          onOpenScanner={() => setScreen('scan')}
+        />
+      )}
       {screen === 'form' && <FormScreen />}
       {screen === 'qr' && <QRDisplayScreen />}
       {screen === 'scan' && <ScannerScreen />}
@@ -480,6 +516,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  homeArrowButton: {
+    marginTop: 14,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#e8eef5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  homeArrowFloating: {
+    position: 'absolute',
+    top: 56,
+    left: 20,
+    zIndex: 2,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  homeArrowText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#174a70',
+  },
+  homeArrowTextLight: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'white',
   },
   header: {
     paddingTop: 50,
