@@ -60,175 +60,98 @@ export default function useOfflineSync() {
   }, []);
 
   const syncPendingTransfers = useCallback(async () => {
-    if (isSyncingRef.current) {
-      console.log('[OfflineSync] Sync skipped: already syncing');
-      return;
-    }
-
-    if (!isOnline) {
-      console.log('[OfflineSync] Sync skipped: device offline');
-      return;
-    }
+    if (isSyncingRef.current) return;
+    if (!isOnline) return;
 
     isSyncingRef.current = true;
     setIsSyncing(true);
     setSyncError(null);
-    console.log('[OfflineSync] Sync started');
 
     try {
       const existing = await AsyncStorage.getItem(PENDING_TRANSFERS_KEY);
       const allRecords = existing ? JSON.parse(existing) : [];
       const records = Array.isArray(allRecords) ? allRecords : [];
-
       const unsynced = records.filter((item) => item?.synced === false && !item?.syncFailed);
+
       if (unsynced.length === 0) {
-        console.log('[OfflineSync] No pending records to sync');
-        setPendingCount(records.filter((item) => item?.synced === false).length);
-        setIsSyncing(false);
-        isSyncingRef.current = false;
+        setPendingCount(0);
         return;
       }
 
       const apiBase = process.env.EXPO_PUBLIC_API_URL;
-      if (!apiBase && !api) {
-        setSyncError('EXPO_PUBLIC_API_URL missing and auth API unavailable');
-        setIsSyncing(false);
-        isSyncingRef.current = false;
-        return;
-      }
 
-      let hospitals = [];
-      try {
-        if (api) {
-          const hospitalResponse = await api.get('/hospitals');
-          hospitals = hospitalResponse?.data?.hospitals || hospitalResponse?.data || [];
-        } else {
-          const hospitalResponse = await axios.get(`${apiBase}/api/hospitals`);
-          hospitals = hospitalResponse?.data?.hospitals || hospitalResponse?.data || [];
-        }
-      } catch (hospitalError) {
-        hospitals = [];
-      }
-
-      const normalizedHospitals = Array.isArray(hospitals) ? hospitals : [];
-      const resolveHospitalIdByName = (name) => {
-        if (!name) return null;
-        const normalizedName = normalizeName(name);
-
-        let match = normalizedHospitals.find((hospital) => {
-          const candidate = normalizeName(hospital?.name || hospital?.hospitalName);
-          return candidate === normalizedName;
-        });
-
-        if (!match) {
-          match = normalizedHospitals.find((hospital) => {
-            const candidate = normalizeName(hospital?.name || hospital?.hospitalName);
-            return candidate.includes(normalizedName) || normalizedName.includes(candidate);
-          });
-        }
-
-        return match?._id || match?.hospitalID || match?.id || null;
-      };
-
-      for (let index = 0; index < records.length; index += 1) {
-        const item = records[index];
+      for (let i = 0; i < records.length; i += 1) {
+        const item = records[i];
         if (!item || item.synced || item.syncFailed) continue;
 
-        const normalizedItem = {
-          ...item,
+        const payload = {
+          patient: item.patient,
+          critical: item.critical,
+          vitals: item.vitals || {},
+          clinical: item.clinical || {},
+          medications: item.medications || [],
+          allergies: item.allergies || [],
+          transferReason: item.transferReason || item.critical?.transferReason,
+          primaryDiagnosis: item.primaryDiagnosis || '',
+          clinicalSummary: item.clinicalSummary || '',
+          sendingHospital: item.sendingHospital || item.sendingFacility?.hospitalName,
+          receivingHospital: item.receivingHospital || item.receivingFacility?.hospitalName,
           sendingFacility: {
-            ...(item.sendingFacility || {}),
-            hospitalID:
-              item?.sendingFacility?.hospitalID ||
-              item?.sendingFacility?._id ||
-              item?.sendingFacility?.id ||
-              resolveHospitalIdByName(item?.sendingFacility?.hospitalName || item?.sendingHospital),
+            hospitalName: item.sendingHospital || item.sendingFacility?.hospitalName,
+            department: item.sendingFacility?.department || 'General',
           },
           receivingFacility: {
-            ...(item.receivingFacility || {}),
-            hospitalID:
-              item?.receivingFacility?.hospitalID ||
-              item?.receivingFacility?._id ||
-              item?.receivingFacility?.id ||
-              resolveHospitalIdByName(item?.receivingFacility?.hospitalName || item?.receivingHospital),
-            hospitalName:
-              item?.receivingFacility?.hospitalName ||
-              item?.receivingFacility?.name ||
-              item?.receivingHospital,
+            hospitalName: item.receivingHospital || item.receivingFacility?.hospitalName,
           },
+          transfer: item.transfer,
+          offlineId: item.offlineId,
         };
-
-        records[index] = normalizedItem;
-
-        if (!normalizedItem?.receivingFacility?.hospitalID) {
-          const attempts = (item.syncAttempts || 0) + 1;
-          records[index] = {
-            ...normalizedItem,
-            syncAttempts: attempts,
-            syncFailed: attempts >= 3,
-          };
-          const missingIdMsg = 'Receiving facility ID missing in offline record';
-          setSyncError(missingIdMsg);
-          console.log(`[OfflineSync] Cannot sync ${item?.offlineId || 'unknown-id'}: ${missingIdMsg}`);
-          continue;
-        }
 
         try {
           let response;
           if (api) {
-            // Prefer authenticated API client because /transfers route is protected.
-            response = await api.post('/transfers', normalizedItem);
+            response = await api.post('/transfers', payload);
           } else {
-            response = await axios.post(`${apiBase}/api/transfers`, normalizedItem);
+            if (!apiBase) {
+              throw new Error('EXPO_PUBLIC_API_URL missing');
+            }
+            response = await axios.post(`${apiBase}/api/transfers`, payload);
           }
 
           if (response?.status === 201) {
-            console.log(`[OfflineSync] Synced: ${item?.offlineId || item?.transferId || 'unknown-id'}`);
-            records[index] = {
+            records[i] = {
               ...item,
               synced: true,
               transferId: response?.data?.transfer?.transferID || response?.data?.transferId || item.transferId,
               syncedAt: new Date().toISOString(),
               syncAttempts: (item.syncAttempts || 0) + 1,
             };
-          } else {
-            const attempts = (item.syncAttempts || 0) + 1;
-            console.log(`[OfflineSync] Non-201 response for ${item?.offlineId || 'unknown-id'} | status=${response?.status} | attempts=${attempts}`);
-            records[index] = {
-              ...item,
-              syncAttempts: attempts,
-              syncFailed: attempts >= 3,
-            };
+            console.log(`[Sync] Synced: ${item?.offlineId || 'unknown-id'}`);
           }
-        } catch (error) {
+        } catch (err) {
           const attempts = (item.syncAttempts || 0) + 1;
-          console.log(
-            `[OfflineSync] Sync failed for ${item?.offlineId || 'unknown-id'} | status=${error?.response?.status || 'n/a'} | attempts=${attempts} | message=${error?.message}`
-          );
-          records[index] = {
+          records[i] = {
             ...item,
             syncAttempts: attempts,
             syncFailed: attempts >= 3,
           };
-
-          if (!syncError) {
-            const message = error?.response?.data?.error || error?.message || 'Sync failed';
-            setSyncError(message);
-          }
+          setSyncError(err?.response?.data?.error || err?.message || 'Sync failed');
+          console.log(`[Sync] Failed: ${item?.offlineId || 'unknown-id'} | ${err?.message}`);
         }
       }
 
       await AsyncStorage.setItem(PENDING_TRANSFERS_KEY, JSON.stringify(records));
-      const remainingUnsynced = records.filter((item) => item?.synced === false).length;
-      setPendingCount(remainingUnsynced);
-      console.log(`[OfflineSync] Sync completed | remaining unsynced=${remainingUnsynced}`);
+      const remaining = records.filter((item) => item?.synced === false).length;
+      setPendingCount(remaining);
+      setLastSyncAt(new Date());
 
-      const now = new Date();
-      setLastSyncAt(now);
-      await AsyncStorage.setItem(SYNC_STATUS_KEY, JSON.stringify({ lastSyncAt: now.toISOString() }));
-    } catch (error) {
-      console.log('syncPendingTransfers error:', error);
-      setSyncError(error?.message || 'Sync failed');
+      await AsyncStorage.setItem(
+        SYNC_STATUS_KEY,
+        JSON.stringify({ lastSyncAt: new Date().toISOString() })
+      );
+    } catch (err) {
+      setSyncError(err?.message || 'Sync failed');
+      console.log('[Sync] Fatal error:', err);
     } finally {
       setIsSyncing(false);
       isSyncingRef.current = false;
@@ -245,6 +168,29 @@ export default function useOfflineSync() {
       setPendingCount(filtered.length);
     } catch (error) {
       console.log('clearSyncedTransfers error:', error);
+    }
+  }, []);
+
+  const resetFailedTransfers = useCallback(async () => {
+    try {
+      const existing = await AsyncStorage.getItem(PENDING_TRANSFERS_KEY);
+      const records = existing ? JSON.parse(existing) : [];
+      const safeRecords = Array.isArray(records) ? records : [];
+
+      const resetRecords = safeRecords.map((item) => ({
+        ...item,
+        synced: false,
+        syncFailed: false,
+        syncAttempts: 0,
+      }));
+
+      await AsyncStorage.setItem(PENDING_TRANSFERS_KEY, JSON.stringify(resetRecords));
+      setPendingCount(resetRecords.filter((item) => item?.synced === false).length);
+      setSyncError(null);
+      return resetRecords.length;
+    } catch (error) {
+      console.log('resetFailedTransfers error:', error);
+      return 0;
     }
   }, []);
 
@@ -364,71 +310,7 @@ export default function useOfflineSync() {
         const records = existing ? JSON.parse(existing) : [];
         const safeRecords = Array.isArray(records) ? records : [];
 
-        // One-time migration: backfill missing receivingFacility.hospitalID for old offline records.
-        let migratedRecords = [...safeRecords];
-        try {
-          let hospitals = [];
-          if (api) {
-            const hospitalResponse = await api.get('/hospitals');
-            hospitals = hospitalResponse?.data?.hospitals || hospitalResponse?.data || [];
-          }
-
-          const normalizedHospitals = Array.isArray(hospitals) ? hospitals : [];
-          const resolveHospitalIdByName = (name) => {
-            if (!name) return null;
-            const normalizedName = normalizeName(name);
-
-            let match = normalizedHospitals.find((hospital) => {
-              const candidate = normalizeName(hospital?.name || hospital?.hospitalName);
-              return candidate === normalizedName;
-            });
-
-            if (!match) {
-              match = normalizedHospitals.find((hospital) => {
-                const candidate = normalizeName(hospital?.name || hospital?.hospitalName);
-                return candidate.includes(normalizedName) || normalizedName.includes(candidate);
-              });
-            }
-
-            return match?._id || match?.hospitalID || match?.id || null;
-          };
-
-          let changed = false;
-          migratedRecords = safeRecords.map((item) => {
-            if (!item || item.synced) return item;
-            const existingReceivingId =
-              item?.receivingFacility?.hospitalID || item?.receivingFacility?._id || item?.receivingFacility?.id;
-            if (existingReceivingId) return item;
-
-            const resolvedId = resolveHospitalIdByName(
-              item?.receivingFacility?.hospitalName || item?.receivingFacility?.name || item?.receivingHospital
-            );
-
-            if (!resolvedId) return item;
-
-            changed = true;
-            return {
-              ...item,
-              receivingFacility: {
-                ...(item.receivingFacility || {}),
-                hospitalID: resolvedId,
-                hospitalName:
-                  item?.receivingFacility?.hospitalName ||
-                  item?.receivingFacility?.name ||
-                  item?.receivingHospital,
-              },
-            };
-          });
-
-          if (changed) {
-            await AsyncStorage.setItem(PENDING_TRANSFERS_KEY, JSON.stringify(migratedRecords));
-            console.log('[OfflineSync] Migrated pending records with missing receiving facility IDs');
-          }
-        } catch (migrationError) {
-          console.log('[OfflineSync] Migration skipped:', migrationError?.message || migrationError);
-        }
-
-        setPendingCount(migratedRecords.filter((item) => item?.synced === false).length);
+        setPendingCount(safeRecords.filter((item) => item?.synced === false).length);
 
         const syncStatus = await AsyncStorage.getItem(SYNC_STATUS_KEY);
         if (syncStatus) {
@@ -443,7 +325,7 @@ export default function useOfflineSync() {
     };
 
     loadSyncState();
-  }, [api]);
+  }, []);
 
   return {
     pendingCount,
@@ -454,6 +336,7 @@ export default function useOfflineSync() {
     getPendingTransfers,
     syncPendingTransfers,
     clearSyncedTransfers,
+    resetFailedTransfers,
     repairPendingTransfers,
   };
 }

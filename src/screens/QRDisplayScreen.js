@@ -25,7 +25,15 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
   const { state, setQRCode, setShareLink, setTransferID, resetForm } = useTransfer();
   const { api } = useAuth();
   const { isOnline } = useNetworkStatus();
-  const { pendingCount, isSyncing, syncError, savePendingTransfer, syncPendingTransfers, repairPendingTransfers } = useOfflineSync();
+  const {
+    pendingCount,
+    isSyncing,
+    syncError,
+    savePendingTransfer,
+    syncPendingTransfers,
+    repairPendingTransfers,
+    resetFailedTransfers,
+  } = useOfflineSync();
 
   const [qrDataString, setQrDataString] = useState(null);
   const [shareLinkState, setShareLinkState] = useState(null);
@@ -291,6 +299,11 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
     );
   };
 
+  const handleResetFailedRecords = async () => {
+    const total = await resetFailedTransfers();
+    Alert.alert('Records Reset', `${total} pending record(s) reset. You can retry sync now.`);
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -387,6 +400,11 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
             <TouchableOpacity style={styles.repairButton} onPress={handleRepairAndSync}>
               <Text style={styles.repairButtonText}>Repair Queue and Retry Sync</Text>
             </TouchableOpacity>
+            {__DEV__ ? (
+              <TouchableOpacity style={styles.resetQueueButton} onPress={handleResetFailedRecords}>
+                <Text style={styles.resetQueueButtonText}>Reset Failed Records (Dev Only)</Text>
+              </TouchableOpacity>
+            ) : null}
           </Card>
         ) : null}
 
@@ -648,6 +666,21 @@ const styles = StyleSheet.create({
   repairButtonText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.white,
+    fontWeight: '700',
+  },
+  resetQueueButton: {
+    marginTop: SPACING.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEECEC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C62828',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  resetQueueButtonText: {
+    ...TYPOGRAPHY.caption,
+    color: '#C62828',
     fontWeight: '700',
   },
   summaryCard: {

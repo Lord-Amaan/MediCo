@@ -15,7 +15,15 @@ const generateShareToken = () => crypto.randomBytes(16).toString('hex');
 exports.createTransfer = async (req, res) => {
   try {
     console.log('📨 Incoming request body:', JSON.stringify(req.body, null, 2));
-    const { patient, critical, vitals, clinical, receivingFacility, transfer: transferInput } = req.body;
+    const {
+      patient,
+      critical,
+      vitals,
+      clinical,
+      receivingFacility,
+      receivingHospital,
+      transfer: transferInput,
+    } = req.body;
 
     console.log('📋 Destructured fields:', {
       patient: !!patient,
@@ -44,9 +52,12 @@ exports.createTransfer = async (req, res) => {
       return res.status(400).json({ error: 'Critical information required' });
     }
 
-    if (!receivingFacility?.hospitalID) {
+    const resolvedReceivingHospitalName =
+      receivingFacility?.hospitalName || receivingFacility?.name || receivingHospital;
+
+    if (!resolvedReceivingHospitalName) {
       console.log('❌ Receiving facility validation failed');
-      return res.status(400).json({ error: 'Receiving facility required' });
+      return res.status(400).json({ error: 'Receiving hospital name is required' });
     }
 
     // Validate transfer mode if provided
@@ -88,7 +99,10 @@ exports.createTransfer = async (req, res) => {
         doctorEmail: req.user?.email, // 📧 Used for sending acknowledgement notifications
         timestamp: new Date(),
       },
-      receivingFacility,
+      receivingFacility: {
+        ...(receivingFacility || {}),
+        hospitalName: resolvedReceivingHospitalName,
+      },
       transfer: {
         transferID,
         mode: transferInput?.mode,
