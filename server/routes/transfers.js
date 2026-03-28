@@ -1,15 +1,33 @@
 const express = require('express');
 const router = express.Router();
-// const { createTransfer, getTransfer, updateTransfer, deleteTransfer } = require('../controllers/transferController');
+const transferController = require('../controllers/transferController');
+const { verifyToken, checkPermission } = require('../middleware/auth');
 
-// TODO: Add routes here
-// router.post('/', createTransfer);
-// router.get('/:id', getTransfer);
-// router.put('/:id', updateTransfer);
-// router.delete('/:id', deleteTransfer);
+// Create transfer (requires Create_Transfer permission)
+router.post('/', verifyToken, checkPermission('Create_Transfer'), transferController.createTransfer);
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Transfers endpoint ready' });
-});
+// Get all transfers for current hospital
+router.get('/', verifyToken, transferController.listTransfers);
+
+// Get transfer by ID
+router.get('/:id', verifyToken, transferController.getTransfer);
+
+// Get transfer by QR share token (public, for receiving side)
+router.get('/share/:shareToken', transferController.getTransferByShareToken);
+
+// Get patient transfer history
+router.get('/patient/:patientID', verifyToken, transferController.getPatientTransferHistory);
+
+// Acknowledge transfer (receiving team)
+router.post('/:id/acknowledge', verifyToken, checkPermission('Review_Transfer'), transferController.acknowledgeTransfer);
+
+// Mark as transferred
+router.put('/:id/transferred', verifyToken, transferController.markTransferred);
+
+// Update transfer
+router.put('/:id', verifyToken, transferController.updateTransfer);
+
+// Delete transfer (admin only)
+router.delete('/:id', verifyToken, checkPermission('Admin'), transferController.deleteTransfer);
 
 module.exports = router;

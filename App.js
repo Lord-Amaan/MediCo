@@ -1,24 +1,39 @@
 // ============================================================================
 // MEDICO - PATIENT TRANSFER HANDOFF APP
-// Main entry point with modular structure
+// Main entry point with authentication & modular structure
 // ============================================================================
 
 import React, { useState } from 'react';
 import { View } from 'react-native';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { TransferProvider } from './src/context/TransferContext';
 import {
+  LoginScreen,
   HomeScreen,
   PatientDetailsScreen,
   CriticalInfoScreen,
   HospitalSelectionScreen,
   ConfirmationScreen,
   QRDisplayScreen,
+  QRScannerScreen,
+  ReceivedTransferScreen,
 } from './src/screens';
 
+const API_BASE_URL = 'http://192.168.0.124:5000/api';
 
-
-export default function App() {
+function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('Home');
+  const [scannedData, setScannedData] = useState(null);
+  const { state } = useAuth();
+
+  // If not authenticated, show login screen
+  if (!state.token) {
+    return (
+      <LoginScreen
+        onLoginSuccess={() => setCurrentScreen('Home')}
+      />
+    );
+  }
 
   const handleNavigate = (screenName) => {
     setCurrentScreen(screenName);
@@ -26,6 +41,7 @@ export default function App() {
 
   const goToHome = () => {
     setCurrentScreen('Home');
+    setScannedData(null);
   };
 
   const goToNext = () => {
@@ -60,11 +76,20 @@ export default function App() {
     }
   };
 
+  const handleQRScanned = (data) => {
+    setScannedData(data);
+    setCurrentScreen('ReceivedTransfer');
+  };
+
   return (
     <TransferProvider>
       <View style={{ flex: 1 }}>
+        {/* Sending Side - Main Flow */}
         {currentScreen === 'Home' && (
-          <HomeScreen onNavigate={handleNavigate} />
+          <HomeScreen
+            onNavigate={handleNavigate}
+            onOpenScanner={() => setCurrentScreen('QRScanner')}
+          />
         )}
 
         {currentScreen === 'PatientDetails' && (
@@ -101,7 +126,37 @@ export default function App() {
             onBack={goToBack}
           />
         )}
+
+        {/* Receiving Side */}
+        {currentScreen === 'QRScanner' && (
+          <QRScannerScreen
+            onScanSuccess={handleQRScanned}
+            onClose={() => setCurrentScreen('Home')}
+          />
+        )}
+
+        {currentScreen === 'ReceivedTransfer' && scannedData && (
+          <ReceivedTransferScreen
+            transferData={scannedData}
+            onClose={() => {
+              setScannedData(null);
+              setCurrentScreen('Home');
+            }}
+            onAcknowledge={() => {
+              setScannedData(null);
+              setCurrentScreen('Home');
+            }}
+          />
+        )}
       </View>
     </TransferProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider apiBaseURL={API_BASE_URL}>
+      <AppContent />
+    </AuthProvider>
   );
 }

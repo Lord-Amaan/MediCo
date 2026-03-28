@@ -9,6 +9,7 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants';
 
 export const Button = ({
   title,
+  label,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -18,6 +19,8 @@ export const Button = ({
   textStyle,
   ...props
 }) => {
+  // Support both title and label props
+  const buttonText = title || label;
   const getVariantStyle = () => {
     switch (variant) {
       case 'primary':
@@ -79,7 +82,7 @@ export const Button = ({
         />
       ) : (
         <Text style={[styles.text, getTextVariantStyle(), textStyle]}>
-          {title}
+          {buttonText}
         </Text>
       )}
     </TouchableOpacity>

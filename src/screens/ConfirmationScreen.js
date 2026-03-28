@@ -106,18 +106,20 @@ export const ConfirmationScreen = ({ onNext, onBack }) => {
               <Text style={styles.value}>{state.receivingFacility.type}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.label}>Distance:</Text>
-              <Text style={styles.value}>{state.receivingFacility.distance} km</Text>
+              <Text style={styles.label}>Location:</Text>
+              <Text style={styles.value}>{state.receivingFacility.city}, {state.receivingFacility.state}</Text>
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.label}>Contact:</Text>
-              <Text style={styles.value}>{state.receivingFacility.contact}</Text>
-            </View>
-            {state.receivingFacility.departments && (
+            {state.receivingFacility.contact && state.receivingFacility.contact.phone && (
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Contact:</Text>
+                <Text style={styles.value}>{state.receivingFacility.contact.phone}</Text>
+              </View>
+            )}
+            {state.receivingFacility.departments && state.receivingFacility.departments.length > 0 && (
               <View style={[styles.detailRow, styles.multilineRow]}>
                 <Text style={styles.label}>Departments:</Text>
                 <Text style={styles.value}>
-                  {state.receivingFacility.departments.join(', ')}
+                  {state.receivingFacility.departments.map(d => d.name || d).join(', ')}
                 </Text>
               </View>
             )}

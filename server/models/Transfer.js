@@ -185,7 +185,7 @@ const transferSchema = new mongoose.Schema(
       qrCodeURL: String,
       shareLink: { type: String, index: true },
       shareLinkExpiry: Date,
-      shareToken: { type: String, unique: true, index: true },
+      shareToken: { type: String, unique: true, sparse: true, index: true },
       readonlyLink: { type: Boolean, default: true },
       linkedRecords: [mongoose.Schema.Types.ObjectId],
     },

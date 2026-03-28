@@ -11,6 +11,7 @@ import {
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants';
 import { Button, Card, FilterTabs, HospitalListItem } from '../components';
 import { useTransfer } from '../context/TransferContext';
+import { useAuth } from '../context/AuthContext';
 
 // Dummy hospitals data - replace with API call
 const DUMMY_HOSPITALS = [
@@ -74,6 +75,7 @@ export const HospitalSelectionScreen = ({ onNext, onBack }) => {
     setReceivingFacility,
     setHospitalTypeFilter,
   } = useTransfer();
+  const { api } = useAuth();
 
   const [hospitals, setHospitals] = useState([]);
   const [filteredHospitals, setFilteredHospitals] = useState([]);
@@ -95,22 +97,38 @@ export const HospitalSelectionScreen = ({ onNext, onBack }) => {
   const fetchHospitals = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await hospitalApi.getHospitals();
-      // setHospitals(response.data);
-
-      // Using dummy data for now
-      setHospitals(DUMMY_HOSPITALS);
+      console.log('📡 Fetching hospitals from API...');
+      const response = await api.get('/hospitals');
+      console.log('✅ API Response:', response.data);
+      
+      // Extract hospitals array from response
+      let hospitalsData = response.data.hospitals || response.data;
+      if (!Array.isArray(hospitalsData)) {
+        console.warn('⚠️ API response is not an array:', typeof hospitalsData);
+        hospitalsData = DUMMY_HOSPITALS;
+      }
+      
+      console.log('✅ Hospitals fetched:', hospitalsData.length);
+      setHospitals(hospitalsData);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch hospitals');
-      console.error(err);
+      console.error('❌ Failed to fetch hospitals:', err);
+      setError('Failed to fetch hospitals. Using fallback data.');
+      // Fallback to dummy data if API fails
+      setHospitals(DUMMY_HOSPITALS);
     } finally {
       setLoading(false);
     }
   };
 
   const filterHospitals = (type, search) => {
+    // Safety check: ensure hospitals is an array
+    if (!Array.isArray(hospitals)) {
+      console.warn('⚠️ hospitals is not an array:', hospitals);
+      setFilteredHospitals([]);
+      return;
+    }
+    
     let filtered = hospitals.filter((h) => h.type === type);
 
     if (search.trim()) {
@@ -213,11 +231,16 @@ export const HospitalSelectionScreen = ({ onNext, onBack }) => {
             {state.receivingFacility.name}
           </Text>
           <Text style={styles.selectedInfo}>
-            Distance: {state.receivingFacility.distance} km
+            Type: {state.receivingFacility.type}
           </Text>
           <Text style={styles.selectedInfo}>
-            Contact: {state.receivingFacility.contact}
+            Location: {state.receivingFacility.city}, {state.receivingFacility.state}
           </Text>
+          {state.receivingFacility.contact && state.receivingFacility.contact.phone && (
+            <Text style={styles.selectedInfo}>
+              Contact: {state.receivingFacility.contact.phone}
+            </Text>
+          )}
         </Card>
       )}
 

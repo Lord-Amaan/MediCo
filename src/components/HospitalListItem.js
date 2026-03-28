@@ -32,18 +32,23 @@ export const HospitalListItem = ({
 
         <View style={styles.detailsContainer}>
           <Text style={styles.detailText}>
-            📍 {hospital.distance} km
+            🏥 {hospital.type}
           </Text>
           <Text style={styles.detailText}>
-            📞 {hospital.contact}
+            📍 {hospital.city}, {hospital.state}
           </Text>
+          {hospital.contact && hospital.contact.phone && (
+            <Text style={styles.detailText}>
+              📞 {hospital.contact.phone}
+            </Text>
+          )}
         </View>
 
         {hospital.departments && hospital.departments.length > 0 && (
           <View style={styles.departmentsContainer}>
             <Text style={styles.departmentsLabel}>Departments:</Text>
             <Text style={styles.departmentsList}>
-              {hospital.departments.join(', ')}
+              {hospital.departments.map(d => d.name || d).join(', ')}
             </Text>
           </View>
         )}

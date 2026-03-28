@@ -5,41 +5,66 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants';
 import { Card, Button } from '../components';
 
-export const HomeScreen = ({ onNavigate }) => {
+export const HomeScreen = ({ onNavigate, onOpenScanner }) => {
+  const { state, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          onPress: async () => {
+            await logout();
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>👋 Hi doctor!</Text>
-        <Text style={styles.subtitle}>Hospital: Rural PHC ✓</Text>
-        <Text style={styles.status}>Status: Ready to work</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>👋 Welcome!</Text>
+            <Text style={styles.subtitle}>
+              {state.user?.name || 'Doctor'}
+            </Text>
+            <Text style={styles.status}>Status: Ready to work</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.menuContainer}>
         <Button
-          title="📋 CREATE TRANSFER"
+          label="📋 CREATE TRANSFER"
           onPress={() => onNavigate('PatientDetails')}
-          variant="primary"
-          size="lg"
           style={styles.menuButton}
         />
 
         <Button
-          title="📥 SCAN QR CODE"
-          onPress={() => onNavigate('Scanner')}
-          variant="secondary"
-          size="lg"
+          label="📥 SCAN QR CODE"
+          onPress={onOpenScanner}
           style={styles.menuButton}
         />
 
         <Button
-          title="📊 VIEW HISTORY"
+          label="📊 VIEW HISTORY"
           onPress={() => {}}
           variant="secondary"
-          size="lg"
           style={styles.menuButton}
         />
       </View>
@@ -50,7 +75,7 @@ export const HomeScreen = ({ onNavigate }) => {
       </Card>
 
       <Card style={styles.versionCard}>
-        <Text style={styles.versionText}>App Version 1.0</Text>
+        <Text style={styles.versionText}>App Version 1.0 • MediCo</Text>
       </Card>
     </ScrollView>
   );
@@ -67,6 +92,11 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
     backgroundColor: COLORS.primary,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   greeting: {
     ...TYPOGRAPHY.h2,
     color: COLORS.white,
@@ -80,6 +110,17 @@ const styles = StyleSheet.create({
   status: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primaryLight,
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  logoutText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
   menuContainer: {
     paddingHorizontal: SPACING.lg,

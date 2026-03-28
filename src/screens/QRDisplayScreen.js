@@ -7,20 +7,24 @@ import {
   Share,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { Button, Card } from '../components';
 import { useTransfer } from '../context/TransferContext';
+import { useAuth } from '../context/AuthContext';
 import { generateShareLink, encodeTransferData } from '../utils';
 
 export const QRDisplayScreen = ({ onDone, onBack }) => {
   const { state, setQRCode, setShareLink, setTransferID, resetForm } = useTransfer();
+  const { api, state: authState } = useAuth();
 
   const [qrDataString, setQrDataString] = useState(null);
   const [shareLinkState, setShareLinkState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [transferData, setTransferData] = useState(null);
 
   useEffect(() => {
     generateAndDisplayQR();
@@ -34,23 +38,71 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
       const transferID = `TXF_${Date.now()}`;
       setTransferID(transferID);
 
-      // Encode transfer data to JSON string for QR
-      const qrData = encodeTransferData({
-        ...state,
-        transferID,
-      });
-      setQrDataString(qrData);
-      setQRCode(qrData);
+      // Build transfer payload in the format expected by backend
+      const transferPayload = {
+        patient: {
+          name: state.patientName,
+          patientID: state.patientID,
+          age: parseInt(state.patientAge) || 0,
+        },
+        critical: {
+          // Convert simple string allergies to objects
+          allergies: (state.allergies || []).map(allergy => ({
+            name: allergy,
+            severity: 'Moderate',
+            reaction: 'Unknown',
+          })),
+          // Convert simple string medications to objects
+          activeMedications: (state.medications || []).map(med => ({
+            name: med,
+            dose: 'Not specified',
+            route: 'Oral',
+            frequency: 'As needed',
+          })),
+          transferReason: state.transferReason,
+        },
+        sendingFacility: {
+          hospitalID: state.sendingFacility?._id || state.sendingFacility?.hospitalID,
+          hospitalName: state.sendingFacility?.name,
+          department: 'General',
+        },
+        receivingFacility: {
+          hospitalID: state.receivingFacility?._id,
+          hospitalName: state.receivingFacility?.name,
+          department: state.receivingFacility?.city,
+        },
+      };
 
-      // Generate share link
-      const link = generateShareLink(transferID);
-      setShareLinkState(link);
-      setShareLink(link);
+      // Create transfer in backend
+      console.log('📤 Submitting transfer to backend:', transferPayload);
+      const response = await api.post('/transfers', transferPayload);
+      
+      if (response.data && response.data.transfer) {
+        console.log('✅ Transfer created:', response.data.transfer.transferID);
+        setTransferData(response.data.transfer);
+
+        // Encode transfer data to JSON string for QR (use backend ID)
+        const qrData = encodeTransferData({
+          ...state,
+          transferID: response.data.transfer.transferID,
+        });
+        setQrDataString(qrData);
+        setQRCode(qrData);
+
+        // Generate share link with backend ID
+        const link = generateShareLink(response.data.transfer.transferID);
+        setShareLinkState(link);
+        setShareLink(link);
+      } else {
+        throw new Error('No transfer data returned from backend');
+      }
 
       setError(null);
     } catch (err) {
-      console.error('Error generating QR:', err);
-      setError('Failed to generate QR code. Please try again.');
+      console.error('❌ Error creating transfer:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to create transfer';
+      setError(errorMsg);
+      Alert.alert('Creation Failed', errorMsg);
     } finally {
       setLoading(false);
     }
