@@ -210,6 +210,36 @@ exports.getTransfer = async (req, res) => {
 };
 
 // ============================================================================
+// GET TRANSFER REPORT BY TRANSFER ID (Public - website use)
+// ============================================================================
+exports.getTransferReportByTransferID = async (req, res) => {
+  try {
+    const { transferID } = req.params;
+
+    if (!transferID) {
+      return res.status(400).json({ error: 'transferID is required' });
+    }
+
+    const transfer = await Transfer.findOne({
+      'transfer.transferID': transferID,
+    }).select(
+      'transfer patient critical vitals clinical sendingFacility receivingFacility acknowledgement interactionCheck patientTransferSequence relatedTransfers createdAt updatedAt'
+    );
+
+    if (!transfer) {
+      return res.status(404).json({ error: 'Transfer report not found' });
+    }
+
+    res.json({
+      message: 'Transfer report fetched successfully',
+      transfer,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Failed to fetch transfer report' });
+  }
+};
+
+// ============================================================================
 // GET TRANSFER BY QR SHARE TOKEN (Receiving side - QR scan)
 // ============================================================================
 exports.getTransferByShareToken = async (req, res) => {

@@ -7,9 +7,16 @@ const mongoose = require('mongoose');
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+app.use(bodyParser.json({ limit: '15mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '15mb' }));
 
 // Database Connection
 const mongoURI = process.env.MONGODB_URI;
@@ -35,6 +42,9 @@ app.use('/api/users', require('./routes/users'));
 
 // Transfer routes (protected)
 app.use('/api/transfers', require('./routes/transfers'));
+
+// Scan report route
+app.use('/api', require('./routes/scanReport'));
 
 // ============================================================================
 // HEALTH CHECK
