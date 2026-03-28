@@ -52,7 +52,7 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.title}>Patient Details</Text>
-          <Text style={styles.subtitle}>Screen 1/5 - Basic Information</Text>
+          <Text style={styles.subtitle}>Screen 1/6 - Basic Information</Text>
         </View>
 
         <Card style={styles.formCard}>

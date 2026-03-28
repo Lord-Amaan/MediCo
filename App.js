@@ -12,6 +12,7 @@ import {
   HomeScreen,
   PatientDetailsScreen,
   CriticalInfoScreen,
+  ClinicalDetailsScreen,
   HospitalSelectionScreen,
   ConfirmationScreen,
   QRDisplayScreen,
@@ -49,6 +50,7 @@ function AppContent() {
       'Home',
       'PatientDetails',
       'CriticalInfo',
+      'ClinicalDetails',
       'HospitalSelection',
       'Confirmation',
       'QRDisplay',
@@ -65,6 +67,7 @@ function AppContent() {
       'Home',
       'PatientDetails',
       'CriticalInfo',
+      'ClinicalDetails',
       'HospitalSelection',
       'Confirmation',
       'QRDisplay',
@@ -101,6 +104,13 @@ function AppContent() {
 
         {currentScreen === 'CriticalInfo' && (
           <CriticalInfoScreen
+            onNext={goToNext}
+            onBack={goToBack}
+          />
+        )}
+
+        {currentScreen === 'ClinicalDetails' && (
+          <ClinicalDetailsScreen
             onNext={goToNext}
             onBack={goToBack}
           />

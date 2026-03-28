@@ -170,7 +170,7 @@ export const HospitalSelectionScreen = ({ onNext, onBack }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Select Receiving Hospital</Text>
-        <Text style={styles.subtitle}>Screen 3/5 - Hospital Selection</Text>
+        <Text style={styles.subtitle}>Screen 4/6 - Hospital Selection</Text>
       </View>
 
       {/* Hospital Type Filter */}
@@ -219,7 +219,6 @@ export const HospitalSelectionScreen = ({ onNext, onBack }) => {
             </Text>
           </View>
         }
-        scrollEnabled={false}
         style={styles.listContainer}
       />
 
@@ -321,8 +320,8 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   listContainer: {
+    flex: 1,
     paddingHorizontal: SPACING.lg,
-    maxHeight: '40%',
   },
   listItemContainer: {
     marginBottom: SPACING.md,

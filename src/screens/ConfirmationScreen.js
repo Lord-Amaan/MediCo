@@ -8,7 +8,6 @@ import {
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { Button, Card } from '../components';
 import { useTransfer } from '../context/TransferContext';
-import { formatDate, formatTime } from '../utils';
 
 export const ConfirmationScreen = ({ onNext, onBack }) => {
   const { state } = useTransfer();
@@ -22,7 +21,7 @@ export const ConfirmationScreen = ({ onNext, onBack }) => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.title}>Review & Confirm</Text>
-          <Text style={styles.subtitle}>Screen 4/5 - Confirmation</Text>
+          <Text style={styles.subtitle}>Screen 5/6 - Confirmation</Text>
         </View>
 
         {/* Sending Hospital */}
@@ -58,6 +57,31 @@ export const ConfirmationScreen = ({ onNext, onBack }) => {
             <Text style={styles.value}>{state.patientID}</Text>
           </View>
 
+          {state.patientGender ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Gender:</Text>
+              <Text style={styles.value}>{state.patientGender}</Text>
+            </View>
+          ) : null}
+          {state.patientDateOfBirth ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>DOB:</Text>
+              <Text style={styles.value}>{state.patientDateOfBirth}</Text>
+            </View>
+          ) : null}
+          {state.patientPhone ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Phone:</Text>
+              <Text style={styles.value}>{state.patientPhone}</Text>
+            </View>
+          ) : null}
+          {state.patientAddress ? (
+            <View style={[styles.detailRow, styles.multilineRow]}>
+              <Text style={styles.label}>Address:</Text>
+              <Text style={styles.value}>{state.patientAddress}</Text>
+            </View>
+          ) : null}
+
           {/* Allergies */}
           {state.allergies.length > 0 && (
             <View style={[styles.detailRow, styles.multilineRow]}>
@@ -91,6 +115,48 @@ export const ConfirmationScreen = ({ onNext, onBack }) => {
             <Text style={styles.label}>🚑 Reason:</Text>
             <Text style={styles.value}>{state.transferReason}</Text>
           </View>
+
+          {state.primaryDiagnosis ? (
+            <View style={[styles.detailRow, styles.multilineRow]}>
+              <Text style={styles.label}>🩺 Primary Diagnosis:</Text>
+              <Text style={styles.value}>{state.primaryDiagnosis}</Text>
+            </View>
+          ) : null}
+
+          {(state.vitals?.bloodPressure || state.vitals?.heartRate || state.vitals?.respiratoryRate || state.vitals?.temperature || state.vitals?.oxygenSaturation || state.vitals?.bloodGlucose) ? (
+            <View style={[styles.detailRow, styles.multilineRow]}>
+              <Text style={styles.label}>📊 Vitals:</Text>
+              <View>
+                {state.vitals.bloodPressure ? <Text style={styles.listItem}>• BP: {state.vitals.bloodPressure}</Text> : null}
+                {state.vitals.heartRate ? <Text style={styles.listItem}>• HR: {state.vitals.heartRate}</Text> : null}
+                {state.vitals.respiratoryRate ? <Text style={styles.listItem}>• RR: {state.vitals.respiratoryRate}</Text> : null}
+                {state.vitals.temperature ? <Text style={styles.listItem}>• Temp: {state.vitals.temperature}</Text> : null}
+                {state.vitals.oxygenSaturation ? <Text style={styles.listItem}>• SpO2: {state.vitals.oxygenSaturation}%</Text> : null}
+                {state.vitals.bloodGlucose ? <Text style={styles.listItem}>• Glucose: {state.vitals.bloodGlucose}</Text> : null}
+              </View>
+            </View>
+          ) : null}
+
+          {state.pendingInvestigations ? (
+            <View style={[styles.detailRow, styles.multilineRow]}>
+              <Text style={styles.label}>🧪 Pending Tests:</Text>
+              <Text style={styles.value}>{state.pendingInvestigations}</Text>
+            </View>
+          ) : null}
+
+          {state.clinicalSummary ? (
+            <View style={[styles.detailRow, styles.multilineRow]}>
+              <Text style={styles.label}>📝 Clinical Summary:</Text>
+              <Text style={styles.value}>{state.clinicalSummary}</Text>
+            </View>
+          ) : null}
+
+          {state.transferMode ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>🚐 Transfer Mode:</Text>
+              <Text style={styles.value}>{state.transferMode}</Text>
+            </View>
+          ) : null}
         </Card>
 
         {/* Receiving Hospital */}

@@ -7,13 +7,39 @@ const initialState = {
   patientName: '',
   patientID: '',
   patientAge: '',
+  patientGender: '',
+  patientDateOfBirth: '',
+  patientPhone: '',
+  patientAddress: '',
 
   // Critical info (Screen 2)
   allergies: [],
   medications: [],
   transferReason: '',
+  primaryDiagnosis: '',
 
-  // Hospital selection (Screen 3)
+  // Clinical details (Screen 3)
+  vitals: {
+    bloodPressure: '',
+    heartRate: '',
+    respiratoryRate: '',
+    temperature: '',
+    oxygenSaturation: '',
+    bloodGlucose: '',
+  },
+  pendingInvestigations: '',
+  clinicalSummary: '',
+  pastMedicalHistory: '',
+  surgicalHistory: '',
+  allergyDetailsText: '',
+  medicationDetailsText: '',
+  transferMode: '',
+  transferClinicalReason: '',
+  medicalEscort: false,
+  escortName: '',
+  escortQualification: '',
+
+  // Hospital selection (Screen 4)
   sendingFacility: {
     hospitalID: 'HOSP_PHC_001', // Default - would come from logged-in user
     name: 'Rural PHC',
@@ -42,6 +68,14 @@ const reducer = (state, action) => {
       return { ...state, patientID: action.payload };
     case 'SET_PATIENT_AGE':
       return { ...state, patientAge: action.payload };
+    case 'SET_PATIENT_GENDER':
+      return { ...state, patientGender: action.payload };
+    case 'SET_PATIENT_DOB':
+      return { ...state, patientDateOfBirth: action.payload };
+    case 'SET_PATIENT_PHONE':
+      return { ...state, patientPhone: action.payload };
+    case 'SET_PATIENT_ADDRESS':
+      return { ...state, patientAddress: action.payload };
 
     // Critical info actions
     case 'SET_ALLERGIES':
@@ -72,6 +106,38 @@ const reducer = (state, action) => {
 
     case 'SET_TRANSFER_REASON':
       return { ...state, transferReason: action.payload };
+    case 'SET_PRIMARY_DIAGNOSIS':
+      return { ...state, primaryDiagnosis: action.payload };
+    case 'SET_VITAL':
+      return {
+        ...state,
+        vitals: {
+          ...state.vitals,
+          [action.payload.key]: action.payload.value,
+        },
+      };
+    case 'SET_PENDING_INVESTIGATIONS':
+      return { ...state, pendingInvestigations: action.payload };
+    case 'SET_CLINICAL_SUMMARY':
+      return { ...state, clinicalSummary: action.payload };
+    case 'SET_PAST_MEDICAL_HISTORY':
+      return { ...state, pastMedicalHistory: action.payload };
+    case 'SET_SURGICAL_HISTORY':
+      return { ...state, surgicalHistory: action.payload };
+    case 'SET_ALLERGY_DETAILS_TEXT':
+      return { ...state, allergyDetailsText: action.payload };
+    case 'SET_MEDICATION_DETAILS_TEXT':
+      return { ...state, medicationDetailsText: action.payload };
+    case 'SET_TRANSFER_MODE':
+      return { ...state, transferMode: action.payload };
+    case 'SET_TRANSFER_CLINICAL_REASON':
+      return { ...state, transferClinicalReason: action.payload };
+    case 'SET_MEDICAL_ESCORT':
+      return { ...state, medicalEscort: action.payload };
+    case 'SET_ESCORT_NAME':
+      return { ...state, escortName: action.payload };
+    case 'SET_ESCORT_QUALIFICATION':
+      return { ...state, escortQualification: action.payload };
 
     // Hospital selection actions
     case 'SET_HOSPITAL_TYPE_FILTER':
@@ -111,6 +177,10 @@ export const TransferProvider = ({ children }) => {
     setPatientName: (name) => dispatch({ type: 'SET_PATIENT_NAME', payload: name }),
     setPatientID: (id) => dispatch({ type: 'SET_PATIENT_ID', payload: id }),
     setPatientAge: (age) => dispatch({ type: 'SET_PATIENT_AGE', payload: age }),
+    setPatientGender: (gender) => dispatch({ type: 'SET_PATIENT_GENDER', payload: gender }),
+    setPatientDateOfBirth: (dob) => dispatch({ type: 'SET_PATIENT_DOB', payload: dob }),
+    setPatientPhone: (phone) => dispatch({ type: 'SET_PATIENT_PHONE', payload: phone }),
+    setPatientAddress: (address) => dispatch({ type: 'SET_PATIENT_ADDRESS', payload: address }),
 
     // Critical info
     setAllergies: (allergies) => dispatch({ type: 'SET_ALLERGIES', payload: allergies }),
@@ -122,6 +192,19 @@ export const TransferProvider = ({ children }) => {
     removeMedication: (index) => dispatch({ type: 'REMOVE_MEDICATION', payload: index }),
 
     setTransferReason: (reason) => dispatch({ type: 'SET_TRANSFER_REASON', payload: reason }),
+    setPrimaryDiagnosis: (diagnosis) => dispatch({ type: 'SET_PRIMARY_DIAGNOSIS', payload: diagnosis }),
+    setVital: (key, value) => dispatch({ type: 'SET_VITAL', payload: { key, value } }),
+    setPendingInvestigations: (value) => dispatch({ type: 'SET_PENDING_INVESTIGATIONS', payload: value }),
+    setClinicalSummary: (value) => dispatch({ type: 'SET_CLINICAL_SUMMARY', payload: value }),
+    setPastMedicalHistory: (value) => dispatch({ type: 'SET_PAST_MEDICAL_HISTORY', payload: value }),
+    setSurgicalHistory: (value) => dispatch({ type: 'SET_SURGICAL_HISTORY', payload: value }),
+    setAllergyDetailsText: (value) => dispatch({ type: 'SET_ALLERGY_DETAILS_TEXT', payload: value }),
+    setMedicationDetailsText: (value) => dispatch({ type: 'SET_MEDICATION_DETAILS_TEXT', payload: value }),
+    setTransferMode: (value) => dispatch({ type: 'SET_TRANSFER_MODE', payload: value }),
+    setTransferClinicalReason: (value) => dispatch({ type: 'SET_TRANSFER_CLINICAL_REASON', payload: value }),
+    setMedicalEscort: (value) => dispatch({ type: 'SET_MEDICAL_ESCORT', payload: value }),
+    setEscortName: (value) => dispatch({ type: 'SET_ESCORT_NAME', payload: value }),
+    setEscortQualification: (value) => dispatch({ type: 'SET_ESCORT_QUALIFICATION', payload: value }),
 
     // Hospital selection
     setHospitalTypeFilter: (type) =>

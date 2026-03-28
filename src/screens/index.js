@@ -2,6 +2,7 @@ export { LoginScreen } from './LoginScreen';
 export { HomeScreen } from './HomeScreen';
 export { PatientDetailsScreen } from './PatientDetailsScreen';
 export { CriticalInfoScreen } from './CriticalInfoScreen';
+export { ClinicalDetailsScreen } from './ClinicalDetailsScreen';
 export { HospitalSelectionScreen } from './HospitalSelectionScreen';
 export { ConfirmationScreen } from './ConfirmationScreen';
 export { QRDisplayScreen } from './QRDisplayScreen';

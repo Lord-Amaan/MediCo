@@ -30,6 +30,55 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
     generateAndDisplayQR();
   }, []);
 
+  const parseAllergies = () => {
+    if (state.allergyDetailsText?.trim()) {
+      return state.allergyDetailsText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [name, severity, reaction] = line.split('|').map((item) => item?.trim());
+          return {
+            name: name || 'Unknown',
+            severity: ['Mild', 'Moderate', 'Severe'].includes(severity) ? severity : 'Moderate',
+            reaction: reaction || 'Unknown',
+          };
+        });
+    }
+
+    return (state.allergies || []).map((allergy) => ({
+      name: allergy,
+      severity: 'Moderate',
+      reaction: 'Unknown',
+    }));
+  };
+
+  const parseMedications = () => {
+    if (state.medicationDetailsText?.trim()) {
+      return state.medicationDetailsText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [name, dose, route, frequency, mustNotStop] = line.split('|').map((item) => item?.trim());
+          return {
+            name: name || 'Unknown',
+            dose: dose || 'Not specified',
+            route: ['Oral', 'IV', 'Injection', 'Topical', 'Inhaled'].includes(route) ? route : 'Oral',
+            frequency: frequency || 'As needed',
+            mustNotStop: (mustNotStop || '').toLowerCase() === 'true',
+          };
+        });
+    }
+
+    return (state.medications || []).map((med) => ({
+      name: med,
+      dose: 'Not specified',
+      route: 'Oral',
+      frequency: 'As needed',
+    }));
+  };
+
   const generateAndDisplayQR = async () => {
     try {
       setLoading(true);
@@ -44,22 +93,36 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
           name: state.patientName,
           patientID: state.patientID,
           age: parseInt(state.patientAge) || 0,
+          gender: state.patientGender || undefined,
+          dateOfBirth: state.patientDateOfBirth || undefined,
+          phone: state.patientPhone || undefined,
+          address: state.patientAddress || undefined,
         },
         critical: {
-          // Convert simple string allergies to objects
-          allergies: (state.allergies || []).map(allergy => ({
-            name: allergy,
-            severity: 'Moderate',
-            reaction: 'Unknown',
-          })),
-          // Convert simple string medications to objects
-          activeMedications: (state.medications || []).map(med => ({
-            name: med,
-            dose: 'Not specified',
-            route: 'Oral',
-            frequency: 'As needed',
-          })),
+          allergies: parseAllergies(),
+          activeMedications: parseMedications(),
           transferReason: state.transferReason,
+          primaryDiagnosis: state.primaryDiagnosis || undefined,
+        },
+        vitals: {
+          bloodPressure: state.vitals?.bloodPressure || undefined,
+          heartRate: state.vitals?.heartRate ? parseInt(state.vitals.heartRate) : undefined,
+          respiratoryRate: state.vitals?.respiratoryRate ? parseInt(state.vitals.respiratoryRate) : undefined,
+          temperature: state.vitals?.temperature ? parseFloat(state.vitals.temperature) : undefined,
+          oxygenSaturation: state.vitals?.oxygenSaturation ? parseInt(state.vitals.oxygenSaturation) : undefined,
+          bloodGlucose: state.vitals?.bloodGlucose ? parseInt(state.vitals.bloodGlucose) : undefined,
+        },
+        clinical: {
+          recentInvestigations: state.pendingInvestigations
+            ? state.pendingInvestigations.split(',').map((test) => ({ testName: test.trim() })).filter((item) => item.testName)
+            : [],
+          pastMedicalHistory: state.pastMedicalHistory
+            ? state.pastMedicalHistory.split(',').map((item) => item.trim()).filter(Boolean)
+            : [],
+          surgicalHistory: state.surgicalHistory
+            ? state.surgicalHistory.split(',').map((item) => ({ procedure: item.trim() })).filter((item) => item.procedure)
+            : [],
+          clinicalSummary: state.clinicalSummary || undefined,
         },
         sendingFacility: {
           hospitalID: state.sendingFacility?._id || state.sendingFacility?.hospitalID,
@@ -70,6 +133,17 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
           hospitalID: state.receivingFacility?._id,
           hospitalName: state.receivingFacility?.name,
           department: state.receivingFacility?.city,
+        },
+        transfer: {
+          mode: state.transferMode || undefined,
+          reason: state.transferClinicalReason || undefined,
+          medicalEscort: state.medicalEscort,
+          escort: state.medicalEscort
+            ? {
+                name: state.escortName || undefined,
+                qualification: state.escortQualification || undefined,
+              }
+            : undefined,
         },
       };
 
@@ -100,9 +174,15 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
       setError(null);
     } catch (err) {
       console.error('❌ Error creating transfer:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      console.error('Full error:', JSON.stringify(err, null, 2));
+      
       const errorMsg = err.response?.data?.error || err.message || 'Failed to create transfer';
-      setError(errorMsg);
-      Alert.alert('Creation Failed', errorMsg);
+      const detailedError = `${errorMsg}${err.response?.status ? ` (Status: ${err.response.status})` : ''}`;
+      
+      setError(detailedError);
+      Alert.alert('❌ Creation Failed', detailedError);
     } finally {
       setLoading(false);
     }
@@ -158,7 +238,7 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
         <View style={styles.header}>
           <Text style={styles.successEmoji}>🎉</Text>
           <Text style={styles.title}>Transfer Created!</Text>
-          <Text style={styles.subtitle}>Screen 5/5 - QR Code Ready</Text>
+          <Text style={styles.subtitle}>Screen 6/6 - QR Code Ready</Text>
         </View>
 
         {/* QR Code Display */}

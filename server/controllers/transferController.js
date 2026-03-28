@@ -13,26 +13,69 @@ const generateShareToken = () => crypto.randomBytes(16).toString('hex');
 // ============================================================================
 exports.createTransfer = async (req, res) => {
   try {
-    const { patient, critical, vitals, clinical, receivingFacility } = req.body;
+    console.log('📨 Incoming request body:', JSON.stringify(req.body, null, 2));
+    const { patient, critical, vitals, clinical, receivingFacility, transfer: transferInput } = req.body;
+
+    console.log('📋 Destructured fields:', {
+      patient: !!patient,
+      critical: !!critical,
+      vitals: !!vitals,
+      clinical: !!clinical,
+      receivingFacility: !!receivingFacility,
+      transferInput: !!transferInput
+    });
 
     // Validate required fields
     if (!patient?.name || !patient?.patientID || !patient?.age) {
+      console.log('❌ Patient validation failed:', { name: patient?.name, patientID: patient?.patientID, age: patient?.age });
       return res.status(400).json({ error: 'Patient details (name, ID, age) required' });
     }
 
+    // Check critical fields individually
+    console.log('🔍 Critical fields check:', {
+      allergies: critical?.allergies,
+      activeMedications: critical?.activeMedications,
+      transferReason: critical?.transferReason
+    });
+
     if (!critical?.allergies || !critical?.activeMedications || !critical?.transferReason) {
+      console.log('❌ Critical validation failed');
       return res.status(400).json({ error: 'Critical information required' });
     }
 
     if (!receivingFacility?.hospitalID) {
+      console.log('❌ Receiving facility validation failed');
       return res.status(400).json({ error: 'Receiving facility required' });
     }
+
+    // Validate transfer mode if provided
+    const validModes = ['Ambulance', 'Flight', 'Self', 'Other'];
+    if (transferInput?.mode && !validModes.includes(transferInput.mode)) {
+      console.log('❌ Invalid transfer mode:', transferInput.mode);
+      return res.status(400).json({
+        error: `Invalid transfer mode: "${transferInput.mode}". Must be one of: ${validModes.join(', ')}`
+      });
+    }
+
+    // Build patient transfer history context
+    console.log('🔐 Fetching previous transfers for patientID:', patient.patientID);
+    const previousTransfers = await Transfer.find({
+      'patient.patientID': patient.patientID,
+    })
+      .select('_id createdAt sendingFacility receivingFacility')
+      .sort({ createdAt: 1 });
+
+    console.log(`📊 Found ${previousTransfers.length} previous transfers`);
+
+    const patientTransferSequence = previousTransfers.length + 1;
 
     // Create transfer record
     const transferID = generateTransferID();
     const shareToken = generateShareToken();
 
-    const transfer = new Transfer({
+    console.log('📋 Creating new Transfer document with transferID:', transferID);
+
+    const transferData = {
       patient,
       critical,
       vitals: vitals || {},
@@ -46,8 +89,19 @@ exports.createTransfer = async (req, res) => {
       receivingFacility,
       transfer: {
         transferID,
+        mode: transferInput?.mode,
+        reason: transferInput?.reason,
+        medicalEscort: transferInput?.medicalEscort,
+        escort: transferInput?.escort,
         status: 'Pending',
       },
+      relatedTransfers: previousTransfers.map((item) => ({
+        transferID: item._id,
+        date: item.createdAt,
+        fromFacility: item.sendingFacility?.hospitalName || item.sendingFacility?.hospitalID || 'Unknown',
+        toFacility: item.receivingFacility?.hospitalName || item.receivingFacility?.hospitalID || 'Unknown',
+      })),
+      patientTransferSequence,
       sharing: {
         shareToken,
         qrCodeData: JSON.stringify({
@@ -63,11 +117,35 @@ exports.createTransfer = async (req, res) => {
         syncedToServer: true,
         syncedAt: new Date(),
       },
-    });
+    };
+
+    console.log('💾 Transfer data prepared. Saving to database...');
+    const transfer = new Transfer(transferData);
 
     await transfer.save();
+    console.log('✅ Transfer saved successfully. TransferID:', transfer._id);
+
+    // Back-link this transfer into older transfer records for bidirectional timeline navigation.
+    if (previousTransfers.length > 0) {
+      console.log('🔗 Back-linking to', previousTransfers.length, 'previous transfers');
+      await Transfer.updateMany(
+        { _id: { $in: previousTransfers.map((item) => item._id) } },
+        {
+          $push: {
+            relatedTransfers: {
+              transferID: transfer._id,
+              date: transfer.createdAt,
+              fromFacility: transfer.sendingFacility?.hospitalName || transfer.sendingFacility?.hospitalID || 'Unknown',
+              toFacility: transfer.receivingFacility?.hospitalName || transfer.receivingFacility?.hospitalID || 'Unknown',
+            },
+          },
+        }
+      );
+      console.log('✅ Back-linking completed');
+    }
 
     // Log audit
+    console.log('📝 Creating audit log');
     await AuditLog.create({
       action: 'Transfer_Created',
       actor: {
@@ -83,12 +161,15 @@ exports.createTransfer = async (req, res) => {
       details: `Transfer created for patient ${patient.name} (ID: ${patient.patientID})`,
       timestamp: new Date(),
     });
+    console.log('✅ Audit log created');
 
+    console.log('🎉 Transfer creation complete!');
     res.status(201).json({
       message: 'Transfer created successfully',
       transfer: {
         _id: transfer._id,
         transferID,
+        patientTransferSequence,
         shareToken,
         patient: transfer.patient,
         critical: transfer.critical,
@@ -97,8 +178,12 @@ exports.createTransfer = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Transfer creation error:', error);
+    console.error('Error name:', error.name);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
+    if (error.errors) {
+      console.error('Validation errors:', error.errors);
+    }
     res.status(500).json({ error: error.message || 'Failed to create transfer' });
   }
 };
@@ -299,8 +384,8 @@ exports.getPatientTransferHistory = async (req, res) => {
     const transfers = await Transfer.find({
       'patient.patientID': patientID,
     })
-      .select('transfer patient critical sendingFacility receivingFacility acknowledgement')
-      .sort({ 'sendingFacility.timestamp': -1 });
+      .select('transfer patient critical sendingFacility receivingFacility acknowledgement patientTransferSequence relatedTransfers')
+      .sort({ patientTransferSequence: -1, 'sendingFacility.timestamp': -1 });
 
     if (transfers.length === 0) {
       return res.json({

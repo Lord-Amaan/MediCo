@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  FlatList,
 } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants';
 import { FormInput, Button, Card } from '../components';
@@ -71,7 +70,7 @@ export const CriticalInfoScreen = ({ onNext, onBack }) => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.title}>Critical Information</Text>
-          <Text style={styles.subtitle}>Screen 2/5 - Medical Details</Text>
+          <Text style={styles.subtitle}>Screen 2/6 - Medical Details</Text>
         </View>
 
         <Card style={styles.formCard}>
