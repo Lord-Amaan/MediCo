@@ -1,5 +1,6 @@
 const Transfer = require('../models/Transfer');
 const AuditLog = require('../models/AuditLog');
+const emailService = require('../services/emailService');
 const crypto = require('crypto');
 
 // ============================================================================
@@ -84,6 +85,7 @@ exports.createTransfer = async (req, res) => {
         hospitalID: req.user?.hospitalID,
         doctorID: req.user?.userID,
         doctorName: req.user?.name,
+        doctorEmail: req.user?.email, // 📧 Used for sending acknowledgement notifications
         timestamp: new Date(),
       },
       receivingFacility,
@@ -256,11 +258,18 @@ exports.getTransferByShareToken = async (req, res) => {
 
     // Log that this transfer was accessed
     await AuditLog.create({
-      action: 'TRANSFER_VIEWED',
-      userID: req.user?.userID || 'anonymous',
-      targetType: 'Transfer',
-      targetID: transfer._id,
-      details: { viaShareLink: true },
+      action: 'Data_Accessed',
+      actor: {
+        userID: req.user?.userID || 'anonymous',
+        name: req.user?.name || 'anonymous',
+        role: req.user?.role || 'Guest',
+      },
+      target: {
+        transferID: transfer._id,
+        patientID: transfer.patient?.patientID,
+        patientName: transfer.patient?.name,
+      },
+      details: 'Transfer viewed via share token',
       timestamp: new Date(),
     });
 
@@ -353,10 +362,20 @@ exports.acknowledgeTransfer = async (req, res) => {
     const { id } = req.params;
     const { arrivalNotes, discrepancies, flaggedIssues, immediateActions } = req.body;
 
-    const transfer = await Transfer.findById(id);
+    const transfer = await Transfer.findOne({
+      $or: [{ _id: id }, { 'transfer.transferID': id }],
+    });
     if (!transfer) {
       return res.status(404).json({ error: 'Transfer not found' });
     }
+
+    // Convert discrepancies from strings to schema format
+    const formattedDiscrepancies = (discrepancies || []).map((disc) => ({
+      field: typeof disc === 'string' ? 'vital' : (disc.field || 'vital'),
+      issue: typeof disc === 'string' ? disc : disc.issue,
+      action: typeof disc === 'string' ? '' : disc.action,
+      timestamp: new Date(),
+    }));
 
     // Record acknowledgement
     transfer.acknowledgement = {
@@ -367,7 +386,7 @@ exports.acknowledgeTransfer = async (req, res) => {
         timestamp: new Date(),
       },
       arrivalNotes,
-      discrepancies: discrepancies || [],
+      discrepancies: formattedDiscrepancies,
       flaggedIssues: flaggedIssues || [],
       immediateActions: immediateActions || [],
       acknowledgementTime: new Date(),
@@ -383,17 +402,37 @@ exports.acknowledgeTransfer = async (req, res) => {
 
     // Log audit
     await AuditLog.create({
-      action: 'TRANSFER_ACKNOWLEDGED',
-      userID: req.user?.userID,
-      targetType: 'Transfer',
-      targetID: transfer._id,
-      details: {
-        receivedBy: req.user?.name,
+      action: 'Transfer_Acknowledged',
+      actor: {
+        userID: req.user?.userID,
+        name: req.user?.name,
         role: req.user?.role,
-        discrepanciesCount: discrepancies?.length || 0,
       },
+      target: {
+        transferID: transfer._id,
+        patientID: transfer.patient?.patientID,
+        patientName: transfer.patient?.name,
+      },
+      details: `Transfer acknowledged by ${req.user?.name || 'Unknown'} (${req.user?.role || 'Unknown'}), discrepancies: ${discrepancies?.length || 0}`,
       timestamp: new Date(),
     });
+
+    // 📧 Send email notification IF discrepancies exist
+    if (discrepancies && discrepancies.length > 0) {
+      const emailResult = await emailService.sendAcknowledgementNotification({
+        patient: transfer.patient,
+        sendingDoctor: {
+          name: transfer.sendingFacility?.doctorName,
+          email: transfer.sendingFacility?.doctorEmail || 'doctor@hospital.com',
+        },
+        sendingFacility: transfer.sendingFacility,
+        receivingFacility: transfer.receivingFacility,
+        acknowledgement: transfer.acknowledgement,
+        transfer: transfer.transfer,
+      });
+
+      console.log('📧 Email notification:', emailResult.success ? 'Sent' : 'Failed');
+    }
 
     res.json({
       message: 'Transfer acknowledged successfully',
@@ -475,11 +514,16 @@ exports.deleteTransfer = async (req, res) => {
 
     // Log audit
     await AuditLog.create({
-      action: 'TRANSFER_DELETED',
-      userID: req.user?.userID,
-      targetType: 'Transfer',
-      targetID: id,
-      details: { reason: 'Admin deletion' },
+      action: 'Data_Modified',
+      actor: {
+        userID: req.user?.userID,
+        name: req.user?.name,
+        role: req.user?.role,
+      },
+      target: {
+        transferID: id,
+      },
+      details: 'Transfer deleted by admin',
       timestamp: new Date(),
     });
 

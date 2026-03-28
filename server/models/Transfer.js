@@ -93,6 +93,7 @@ const transferSchema = new mongoose.Schema(
       department: String,
       doctorName: String,
       doctorID: String,
+      doctorEmail: String, // 📧 Email for sending acknowledgement notifications
       nurseInCharge: String,
       contactPhone: String,
       timestamp: { type: Date, default: Date.now },

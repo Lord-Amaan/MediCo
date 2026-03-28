@@ -11,6 +11,10 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants';
 import { FormInput, Button, Card } from '../components';
 import { useTransfer } from '../context/TransferContext';
 import { validateNotEmpty } from '../utils';
+import useInteractionCheck from '../hooks/useInteractionCheck';
+import DrugInteractionAlert from '../components/DrugInteractionAlert';
+import useOfflineSync from '../hooks/useOfflineSync';
+import OfflineStatusBar from '../components/OfflineStatusBar';
 
 export const CriticalInfoScreen = ({ onNext, onBack }) => {
   const {
@@ -25,6 +29,17 @@ export const CriticalInfoScreen = ({ onNext, onBack }) => {
   const [allergyInput, setAllergyInput] = useState('');
   const [medicationInput, setMedicationInput] = useState('');
   const [errors, setErrors] = useState({});
+  const [showInteractionAlert, setShowInteractionAlert] = useState(false);
+
+  const {
+    conflicts,
+    checking,
+    hasCritical,
+    hasWarnings,
+    aiUsed,
+    checkInteractions,
+  } = useInteractionCheck();
+  const { syncPendingTransfers } = useOfflineSync();
 
   const validate = () => {
     const newErrors = {};
@@ -59,14 +74,27 @@ export const CriticalInfoScreen = ({ onNext, onBack }) => {
     }
   };
 
-  const handleNext = () => {
-    if (validate()) {
-      onNext();
+  const handleNext = async () => {
+    if (!validate()) {
+      return;
     }
+
+    const result = await checkInteractions(
+      state.medications.map((name) => ({ name })),
+      state.allergies
+    );
+
+    if (result && result.totalFound > 0) {
+      setShowInteractionAlert(true);
+      return;
+    }
+
+    onNext();
   };
 
   return (
     <View style={styles.container}>
+      <OfflineStatusBar onSyncPress={syncPendingTransfers} />
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.title}>Critical Information</Text>
@@ -183,13 +211,26 @@ export const CriticalInfoScreen = ({ onNext, onBack }) => {
           style={styles.halfButton}
         />
         <Button
-          title="NEXT →"
+          title={checking ? 'Checking...' : 'NEXT →'}
           onPress={handleNext}
           variant="primary"
           size="lg"
           style={styles.halfButton}
+          disabled={checking}
         />
       </View>
+
+      <DrugInteractionAlert
+        visible={showInteractionAlert}
+        conflicts={conflicts}
+        hasCritical={hasCritical}
+        aiUsed={aiUsed}
+        onGoBack={() => setShowInteractionAlert(false)}
+        onContinue={() => {
+          setShowInteractionAlert(false);
+          onNext();
+        }}
+      />
     </View>
   );
 };

@@ -15,16 +15,24 @@ import { Button, Card } from '../components';
 import { useTransfer } from '../context/TransferContext';
 import { useAuth } from '../context/AuthContext';
 import { generateShareLink, encodeTransferData } from '../utils';
+import useNetworkStatus from '../hooks/useNetworkStatus';
+import useOfflineSync from '../hooks/useOfflineSync';
+import { encodeRecordForQR } from '../utils/encodeRecord';
+import { generateOfflineId } from '../utils/generateOfflineId';
+import OfflineStatusBar from '../components/OfflineStatusBar';
 
 export const QRDisplayScreen = ({ onDone, onBack }) => {
   const { state, setQRCode, setShareLink, setTransferID, resetForm } = useTransfer();
-  const { api, state: authState } = useAuth();
+  const { api } = useAuth();
+  const { isOnline } = useNetworkStatus();
+  const { pendingCount, isSyncing, syncError, savePendingTransfer, syncPendingTransfers, repairPendingTransfers } = useOfflineSync();
 
   const [qrDataString, setQrDataString] = useState(null);
   const [shareLinkState, setShareLinkState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [transferData, setTransferData] = useState(null);
+  const [mode, setMode] = useState('online');
 
   useEffect(() => {
     generateAndDisplayQR();
@@ -82,6 +90,16 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
   const generateAndDisplayQR = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      const isNetworkFailure = (err) => {
+        if (!err) return false;
+        // No HTTP response usually means network/DNS/timeout/client connectivity issue.
+        if (!err.response) return true;
+        const status = err.response?.status;
+        // Gateway/server unreachable style errors can safely fallback to offline.
+        return status === 502 || status === 503 || status === 504;
+      };
 
       // Generate unique transferID
       const transferID = `TXF_${Date.now()}`;
@@ -125,12 +143,12 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
           clinicalSummary: state.clinicalSummary || undefined,
         },
         sendingFacility: {
-          hospitalID: state.sendingFacility?._id || state.sendingFacility?.hospitalID,
+          hospitalID: state.sendingFacility?._id || state.sendingFacility?.hospitalID || state.sendingFacility?.id,
           hospitalName: state.sendingFacility?.name,
           department: 'General',
         },
         receivingFacility: {
-          hospitalID: state.receivingFacility?._id,
+          hospitalID: state.receivingFacility?._id || state.receivingFacility?.hospitalID || state.receivingFacility?.id,
           hospitalName: state.receivingFacility?.name,
           department: state.receivingFacility?.city,
         },
@@ -147,31 +165,81 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
         },
       };
 
-      // Create transfer in backend
-      console.log('📤 Submitting transfer to backend:', transferPayload);
-      const response = await api.post('/transfers', transferPayload);
-      
-      if (response.data && response.data.transfer) {
-        console.log('✅ Transfer created:', response.data.transfer.transferID);
-        setTransferData(response.data.transfer);
+      const offlineRecordBase = {
+        ...transferPayload,
+        offlineId: await generateOfflineId(),
+        transferId: transferID,
+        createdAt: new Date().toISOString(),
+        patient: {
+          ...transferPayload.patient,
+          name: transferPayload.patient?.name,
+          age: transferPayload.patient?.age,
+          gender: transferPayload.patient?.gender,
+        },
+        allergies: (state.allergies || []).slice(),
+        medications: parseMedications(),
+        transferReason: state.transferReason,
+        primaryDiagnosis: state.primaryDiagnosis,
+        clinicalSummary: state.clinicalSummary,
+        sendingHospital: state.sendingFacility?.name,
+        receivingHospital: state.receivingFacility?.name,
+      };
 
-        // Encode transfer data to JSON string for QR (use backend ID)
-        const qrData = encodeTransferData({
-          ...state,
-          transferID: response.data.transfer.transferID,
-        });
-        setQrDataString(qrData);
-        setQRCode(qrData);
+      const handleOfflineSave = async () => {
+        await savePendingTransfer(offlineRecordBase);
 
-        // Generate share link with backend ID
-        const link = generateShareLink(response.data.transfer.transferID);
-        setShareLinkState(link);
-        setShareLink(link);
+        const encodedRecord = encodeRecordForQR(offlineRecordBase);
+        if (!encodedRecord) {
+          throw new Error('Failed to encode offline record');
+        }
+
+        setMode('offline');
+        setTransferData({ transferID: offlineRecordBase.offlineId, patient: offlineRecordBase.patient });
+        setQrDataString(encodedRecord);
+        setQRCode(encodedRecord);
+        setShareLinkState(null);
+        setShareLink(null);
+        setTransferID(offlineRecordBase.offlineId);
+      };
+
+      if (isOnline) {
+        try {
+          console.log('📤 Online mode detected. Submitting transfer to backend...');
+          const response = await api.post('/transfers', transferPayload);
+
+          if (response.data && response.data.transfer) {
+            console.log('✅ Transfer created:', response.data.transfer.transferID);
+            setMode('online');
+            setTransferData(response.data.transfer);
+
+            const qrData = encodeTransferData({
+              ...state,
+              transferID: response.data.transfer.transferID,
+            });
+            setQrDataString(qrData);
+            setQRCode(qrData);
+
+            const link = generateShareLink(response.data.transfer.transferID);
+            setShareLinkState(link);
+            setShareLink(link);
+          } else {
+            throw new Error('No transfer data returned from backend');
+          }
+        } catch (serverError) {
+          if (isNetworkFailure(serverError)) {
+            console.log('⚠️ Network-level submit failure. Falling back to offline mode:', serverError?.message || serverError);
+            await handleOfflineSave();
+          } else {
+            // Validation/auth/business errors should be shown, not forced into offline flow.
+            const status = serverError?.response?.status;
+            const message = serverError?.response?.data?.error || serverError?.message || 'Failed to create transfer';
+            throw new Error(`${message}${status ? ` (Status: ${status})` : ''}`);
+          }
+        }
       } else {
-        throw new Error('No transfer data returned from backend');
+        console.log('📴 Offline mode detected. Saving transfer locally...');
+        await handleOfflineSave();
       }
-
-      setError(null);
     } catch (err) {
       console.error('❌ Error creating transfer:', err);
       console.error('Error response:', err.response?.data);
@@ -190,8 +258,13 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
 
   const handleShare = async () => {
     try {
+      const transferRef = transferData?.transferID || state.transferID;
+      const shareMessage = mode === 'offline'
+        ? `Patient Transfer (Offline)\n\nPatient: ${state.patientName}\nOffline ID: ${transferRef}\n\nQR payload (offline encoded):\n${qrDataString}`
+        : `Patient Transfer\n\nPatient: ${state.patientName}\nFrom: ${state.sendingFacility.name}\nTo: ${state.receivingFacility.name}\n\nLink: ${shareLinkState}`;
+
       await Share.share({
-        message: `Patient Transfer\n\nPatient: ${state.patientName}\nFrom: ${state.sendingFacility.name}\nTo: ${state.receivingFacility.name}\n\nLink: ${shareLinkState}`,
+        message: shareMessage,
         title: 'Patient Transfer Information',
       });
     } catch (err) {
@@ -202,6 +275,20 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
   const handleDone = () => {
     resetForm();
     onDone();
+  };
+
+  const handleRepairAndSync = async () => {
+    const result = await repairPendingTransfers();
+    if ((result?.repaired || 0) > 0) {
+      Alert.alert('Repair Complete', `Repaired ${result.repaired} pending record(s). Sync will run now.`);
+      await syncPendingTransfers();
+      return;
+    }
+
+    Alert.alert(
+      'Repair Incomplete',
+      'Could not repair pending records automatically. Please open Hospital Selection and re-select receiving hospital for new transfers.'
+    );
   };
 
   if (loading) {
@@ -234,12 +321,26 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
 
   return (
     <View style={styles.container}>
+      <OfflineStatusBar
+        onSyncPress={syncPendingTransfers}
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
+      />
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.successEmoji}>🎉</Text>
           <Text style={styles.title}>Transfer Created!</Text>
           <Text style={styles.subtitle}>Screen 6/6 - QR Code Ready</Text>
+          {mode === 'online' && <Text style={styles.onlineBadge}>Saved to server</Text>}
         </View>
+
+        {mode === 'offline' && (
+          <Card style={styles.offlineBanner} shadow="none">
+            <Text style={styles.offlineBannerTitle}>Offline Mode - Full record encoded in QR</Text>
+            <Text style={styles.offlineBannerText}>Will sync to server when internet is available</Text>
+          </Card>
+        )}
 
         {/* QR Code Display */}
         {qrDataString && (
@@ -253,9 +354,41 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
                 logoBorderRadius={10}
               />
             </View>
-            <Text style={styles.qrHelper}>Scan to share all patient data</Text>
+            <Text style={styles.qrHelper}>
+              {mode === 'offline'
+                ? 'This QR contains the complete patient record for offline use'
+                : 'Scan to share all patient data'}
+            </Text>
           </Card>
         )}
+
+        {pendingCount > 0 && isOnline && (
+          <Card style={styles.pendingSyncCard} shadow="none">
+            <Text style={styles.pendingSyncText}>{isSyncing ? 'Syncing now...' : `${pendingCount} record(s) pending sync`}</Text>
+          </Card>
+        )}
+
+        {pendingCount > 0 && !isOnline && (
+          <Card style={styles.pendingOfflineCard} shadow="none">
+            <Text style={styles.pendingOfflineText}>{pendingCount} records pending sync</Text>
+          </Card>
+        )}
+
+        {isOnline && pendingCount > 0 && !isSyncing && (
+          <TouchableOpacity style={styles.syncNowButton} onPress={syncPendingTransfers}>
+            <Text style={styles.syncNowButtonText}>Sync to Server Now</Text>
+          </TouchableOpacity>
+        )}
+
+        {syncError ? (
+          <Card style={styles.syncErrorCard} shadow="none">
+            <Text style={styles.syncErrorText}>Sync issue: {syncError}</Text>
+            <Text style={styles.syncErrorHint}>Your record is safely saved offline. Retry sync when network/auth is available.</Text>
+            <TouchableOpacity style={styles.repairButton} onPress={handleRepairAndSync}>
+              <Text style={styles.repairButtonText}>Repair Queue and Retry Sync</Text>
+            </TouchableOpacity>
+          </Card>
+        ) : null}
 
         {/* Transfer Summary */}
         <Card style={styles.summaryCard}>
@@ -273,6 +406,7 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
           <Text style={styles.summaryPatient}>
             Patient: {state.patientName}, {state.patientAge}
           </Text>
+          <Text style={styles.summaryInfo}>Transfer Ref: {transferData?.transferID || state.transferID || 'N/A'}</Text>
           {state.allergies.length > 0 && (
             <Text style={styles.summaryWarning}>
               ⚠️ Allergies: {state.allergies.join(', ')}
@@ -411,6 +545,32 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
+  onlineBadge: {
+    ...TYPOGRAPHY.caption,
+    marginTop: SPACING.sm,
+    color: '#2E7D32',
+    backgroundColor: '#EAF3DE',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  offlineBanner: {
+    marginBottom: SPACING.lg,
+    backgroundColor: '#FAEEDA',
+    borderLeftWidth: 4,
+    borderLeftColor: '#BA7517',
+  },
+  offlineBannerTitle: {
+    ...TYPOGRAPHY.body2,
+    color: '#8A5A00',
+    fontWeight: '700',
+    marginBottom: SPACING.xs,
+  },
+  offlineBannerText: {
+    ...TYPOGRAPHY.caption,
+    color: '#A26A00',
+  },
   qrCard: {
     alignItems: 'center',
     marginBottom: SPACING.lg,
@@ -428,6 +588,67 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  pendingSyncCard: {
+    marginBottom: SPACING.md,
+    backgroundColor: '#EAF3DE',
+  },
+  pendingSyncText: {
+    ...TYPOGRAPHY.body2,
+    color: '#2E7D32',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  pendingOfflineCard: {
+    marginBottom: SPACING.md,
+    backgroundColor: '#FAEEDA',
+  },
+  pendingOfflineText: {
+    ...TYPOGRAPHY.body2,
+    color: '#A26A00',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  syncNowButton: {
+    marginBottom: SPACING.md,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  syncNowButtonText: {
+    ...TYPOGRAPHY.body2,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  syncErrorCard: {
+    marginBottom: SPACING.md,
+    backgroundColor: '#FEECEC',
+    borderLeftWidth: 4,
+    borderLeftColor: '#C62828',
+  },
+  syncErrorText: {
+    ...TYPOGRAPHY.body2,
+    color: '#9B1C1C',
+    fontWeight: '600',
+    marginBottom: SPACING.xs,
+  },
+  syncErrorHint: {
+    ...TYPOGRAPHY.caption,
+    color: '#B91C1C',
+  },
+  repairButton: {
+    marginTop: SPACING.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: '#C62828',
+    borderRadius: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  repairButtonText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.white,
+    fontWeight: '700',
   },
   summaryCard: {
     marginBottom: SPACING.lg,
