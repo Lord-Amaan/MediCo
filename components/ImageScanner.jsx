@@ -182,6 +182,78 @@ const ImageScanner = ({ onExtracted, formStep = 'summary' }) => {
   const mergeExtractedData = () => {
     if (scannedPages.length === 0) return null;
 
+    const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
+
+    const toStringArray = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) {
+        return value
+          .map((item) => {
+            if (typeof item === 'string') return item.trim();
+            if (item && typeof item === 'object') return String(item.name || item.allergy || item.medication || '').trim();
+            return '';
+          })
+          .filter(Boolean);
+      }
+      if (typeof value === 'string') {
+        return value
+          .split(/[\n,;|]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+
+    const toMedicationObjects = (value) => {
+      if (!value || !Array.isArray(value)) return [];
+      return value
+        .map((item) => {
+          if (typeof item === 'string') {
+            const name = item.trim();
+            if (!name) return null;
+            return {
+              name,
+              dose: 'Not specified',
+              route: 'Oral',
+              frequency: 'As needed',
+              mustNotStop: false,
+            };
+          }
+          if (item && typeof item === 'object') {
+            const name = String(item.name || item.medication || '').trim();
+            if (!name) return null;
+            return {
+              name,
+              dose: String(item.dose || 'Not specified').trim(),
+              route: String(item.route || 'Oral').trim(),
+              frequency: String(item.frequency || 'As needed').trim(),
+              mustNotStop: Boolean(item.mustNotStop),
+            };
+          }
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    const addUnique = (target, value) => {
+      if (!value) return;
+      const normalized = String(value).trim();
+      if (!normalized) return;
+      const exists = target.some((item) => item.toLowerCase() === normalized.toLowerCase());
+      if (!exists) {
+        target.push(normalized);
+      }
+    };
+
+    const addMedicationUnique = (target, medication) => {
+      if (!medication?.name) return;
+      const normalizedName = medication.name.trim().toLowerCase();
+      const exists = target.some((item) => item?.name?.trim()?.toLowerCase() === normalizedName);
+      if (!exists) {
+        target.push(medication);
+      }
+    };
+
     const merged = {
       patientName: null,
       patientID: null,
@@ -198,6 +270,7 @@ const ImageScanner = ({ onExtracted, formStep = 'summary' }) => {
       surgicalHistory: null,
       transferMode: null,
       allergies: [],
+      medications: [],
       activeMedications: [],
       vitals: {},
     };
@@ -206,41 +279,52 @@ const ImageScanner = ({ onExtracted, formStep = 'summary' }) => {
     scannedPages.forEach(({ extracted }) => {
       if (!extracted) return;
 
+      const patientObj = extracted.patient && typeof extracted.patient === 'object' ? extracted.patient : {};
+      const criticalObj = extracted.critical && typeof extracted.critical === 'object' ? extracted.critical : {};
+      const clinicalObj = extracted.clinical && typeof extracted.clinical === 'object' ? extracted.clinical : {};
+      const transferObj = extracted.transfer && typeof extracted.transfer === 'object' ? extracted.transfer : {};
+
       // Simple string fields - take first non-null value
-      ['patientName', 'patientID', 'age', 'gender', 'dateOfBirth', 'phone', 'address', 'primaryDiagnosis', 'transferReason', 'pendingInvestigations', 'clinicalSummary', 'pastMedicalHistory', 'surgicalHistory', 'transferMode'].forEach((key) => {
-        if (!merged[key] && extracted[key]) {
-          merged[key] = extracted[key];
-        }
-      });
+      if (!merged.patientName) merged.patientName = pickFirst(extracted.patientName, extracted.name, patientObj.name);
+      if (!merged.patientID) merged.patientID = pickFirst(extracted.patientID, extracted.id, extracted.mrn, patientObj.patientID, patientObj.id);
+      if (!merged.age) merged.age = pickFirst(extracted.age, patientObj.age);
+      if (!merged.gender) merged.gender = pickFirst(extracted.gender, patientObj.gender);
+      if (!merged.dateOfBirth) merged.dateOfBirth = pickFirst(extracted.dateOfBirth, extracted.dob, patientObj.dateOfBirth);
+      if (!merged.phone) merged.phone = pickFirst(extracted.phone, extracted.mobile, patientObj.phone);
+      if (!merged.address) merged.address = pickFirst(extracted.address, patientObj.address);
+      if (!merged.primaryDiagnosis) merged.primaryDiagnosis = pickFirst(extracted.primaryDiagnosis, criticalObj.primaryDiagnosis);
+      if (!merged.transferReason) merged.transferReason = pickFirst(extracted.transferReason, extracted.reason, criticalObj.transferReason, transferObj.reason);
+      if (!merged.pendingInvestigations) merged.pendingInvestigations = pickFirst(extracted.pendingInvestigations, clinicalObj.pendingInvestigations, clinicalObj.recentInvestigations);
+      if (!merged.clinicalSummary) merged.clinicalSummary = pickFirst(extracted.clinicalSummary, clinicalObj.clinicalSummary);
+      if (!merged.pastMedicalHistory) merged.pastMedicalHistory = pickFirst(extracted.pastMedicalHistory, clinicalObj.pastMedicalHistory);
+      if (!merged.surgicalHistory) merged.surgicalHistory = pickFirst(extracted.surgicalHistory, clinicalObj.surgicalHistory);
+      if (!merged.transferMode) merged.transferMode = pickFirst(extracted.transferMode, transferObj.mode);
 
       // Arrays - combine and deduplicate
-      if (Array.isArray(extracted.allergies)) {
-        extracted.allergies.forEach((allergy) => {
-          if (allergy && !merged.allergies.includes(allergy)) {
-            merged.allergies.push(allergy);
-          }
-        });
-      }
+      const allergyList = toStringArray(pickFirst(extracted.allergies, extracted.knownAllergies, criticalObj.allergies));
+      allergyList.forEach((allergy) => addUnique(merged.allergies, allergy));
 
-      if (Array.isArray(extracted.activeMedications)) {
-        extracted.activeMedications.forEach((med) => {
-          if (med?.name) {
-            const exists = merged.activeMedications.some((m) => m.name === med.name);
-            if (!exists) {
-              merged.activeMedications.push(med);
-            }
-          }
-        });
-      }
+      const medicationObjects = toMedicationObjects(
+        pickFirst(extracted.activeMedications, criticalObj.activeMedications)
+      );
+      medicationObjects.forEach((medication) => {
+        addMedicationUnique(merged.activeMedications, medication);
+        addUnique(merged.medications, medication.name);
+      });
+
+      const medicationNames = toStringArray(
+        pickFirst(extracted.medications, extracted.activeMedications, extracted.items, criticalObj.activeMedications)
+      );
+      medicationNames.forEach((name) => addUnique(merged.medications, name));
 
       // Vitals object - merge fields
-      if (extracted.vitals && typeof extracted.vitals === 'object') {
-        Object.keys(extracted.vitals).forEach((key) => {
-          if (!merged.vitals[key] && extracted.vitals[key]) {
-            merged.vitals[key] = extracted.vitals[key];
+      const vitalsObj = extracted.vitals && typeof extracted.vitals === 'object' ? extracted.vitals : {};
+      ['bp', 'bloodPressure', 'pulse', 'heartRate', 'spo2', 'oxygenSaturation', 'temp', 'temperature', 'rr', 'respiratoryRate', 'bloodGlucose', 'glucose']
+        .forEach((key) => {
+          if (!merged.vitals[key] && vitalsObj[key]) {
+            merged.vitals[key] = vitalsObj[key];
           }
         });
-      }
     });
 
     return merged;
@@ -407,7 +491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#1d4ed8',
+    backgroundColor: '#0E4A7C',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,

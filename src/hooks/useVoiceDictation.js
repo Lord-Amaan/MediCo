@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { medicalTranscribe, medicalTranscribeFromAudio } from '../utils/medicalTranscription';
+
+const BASE64_ENCODING = FileSystem?.EncodingType?.Base64 || 'base64';
 
 const SUPPORTED_LANGUAGES = {
   'en-US': 'English',
@@ -101,8 +103,23 @@ export default function useVoiceDictation() {
       try {
         setIsProcessing(true);
         const result = await medicalTranscribeFromAudio(base64Audio, mimeType);
+        if (result?.error) {
+          const errorMessage = String(result.error);
+          if (errorMessage.toLowerCase().includes('api key not configured')) {
+            setError('Voice dictation is not configured. Add EXPO_PUBLIC_GEMINI_KEY in a root .env file.');
+          } else {
+            setError('Could not process recorded audio. Please try again.');
+          }
+          return;
+        }
+
         const nextSummary = String(result?.clinicalSummary || '');
         const translatedText = String(result?.translatedText || '');
+        if (!nextSummary && !translatedText) {
+          setError('No speech detected. Please speak clearly and try again.');
+          return;
+        }
+
         const words = nextSummary.trim().split(/\s+/).filter(Boolean);
         const languageCode = languageNameToCode(result?.detectedLanguageName);
 
@@ -209,11 +226,18 @@ export default function useVoiceDictation() {
       }
 
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: BASE64_ENCODING,
       });
 
+      const uriLower = String(uri || '').toLowerCase();
+      const mimeType = uriLower.endsWith('.m4a') || uriLower.endsWith('.mp4')
+        ? 'audio/mp4'
+        : uriLower.endsWith('.wav')
+          ? 'audio/wav'
+          : 'audio/m4a';
+
       setPartialTranscript('');
-      await processAudio(base64, 'audio/m4a');
+      await processAudio(base64, mimeType);
 
       try {
         await FileSystem.deleteAsync(uri, { idempotent: true });

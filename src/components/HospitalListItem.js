@@ -31,16 +31,15 @@ export const HospitalListItem = ({
         <Text style={styles.hospitalName}>{hospital.name}</Text>
 
         <View style={styles.detailsContainer}>
-          <Text style={styles.detailText}>
-            🏥 {hospital.type}
-          </Text>
-          <Text style={styles.detailText}>
-            📍 {hospital.city}, {hospital.state}
-          </Text>
+          <Text style={styles.detailTextLabel}>Type:</Text>
+          <Text style={styles.detailText}>{hospital.type}</Text>
+          <Text style={styles.detailTextLabel}>Location:</Text>
+          <Text style={styles.detailText}>{hospital.city}, {hospital.state}</Text>
           {hospital.contact && hospital.contact.phone && (
-            <Text style={styles.detailText}>
-              📞 {hospital.contact.phone}
-            </Text>
+            <>
+              <Text style={styles.detailTextLabel}>Contact:</Text>
+              <Text style={styles.detailText}>{hospital.contact.phone}</Text>
+            </>
           )}
         </View>
 
@@ -53,12 +52,12 @@ export const HospitalListItem = ({
           </View>
         )}
 
-        {isSelected && (
-          <View style={styles.selectedBadge}>
-            <Text style={styles.selectedBadgeText}>✓ Selected</Text>
-          </View>
-        )}
       </View>
+      {isSelected && (
+        <View style={styles.selectedBadge}>
+          <Text style={styles.selectedBadgeText}>✓ Selected</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -138,5 +137,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.white,
     fontWeight: '600',
+  },
+  detailTextLabel: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    fontWeight: '700',
+    marginBottom: 0,
+    marginTop: 2,
   },
 });

@@ -8,3 +8,4 @@ export { ConfirmationScreen } from './ConfirmationScreen';
 export { QRDisplayScreen } from './QRDisplayScreen';
 export { QRScannerScreen } from './QRScannerScreen';
 export { ReceivedTransferScreen } from './ReceivedTransferScreen';
+export { default as TransferHistoryScreen } from './TransferHistoryScreen';

@@ -1,6 +1,14 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_KEY);
+const getModel = () => {
+  const apiKey = String(process.env.EXPO_PUBLIC_GEMINI_KEY || '').trim();
+  if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+    throw new Error('API key not configured');
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+};
 
 const fallbackResponse = (rawText) => ({
   translatedText: rawText,
@@ -89,21 +97,23 @@ const parseJsonResponse = (responseText, rawText) => {
 async function medicalTranscribe(rawText, detectedLanguage) {
   try {
     const prompt = buildPrompt(rawText, detectedLanguage);
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = getModel();
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text();
     return parseJsonResponse(responseText, rawText);
   } catch (error) {
-    return fallbackResponse(rawText);
+    return {
+      ...fallbackResponse(rawText),
+      error: String(error?.message || 'Text transcription failed'),
+    };
   }
 }
 
 async function medicalTranscribeFromAudio(base64Audio, mimeType = 'audio/m4a') {
   try {
     const prompt = buildPrompt('[Audio input from doctor dictation]', 'auto-detect');
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = getModel();
 
     const result = await model.generateContent([
       {
@@ -119,7 +129,10 @@ async function medicalTranscribeFromAudio(base64Audio, mimeType = 'audio/m4a') {
     const responseText = response.text();
     return parseJsonResponse(responseText, '');
   } catch (error) {
-    return fallbackResponse('');
+    return {
+      ...fallbackResponse(''),
+      error: String(error?.message || 'Audio transcription failed'),
+    };
   }
 }
 

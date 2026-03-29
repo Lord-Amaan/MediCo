@@ -19,12 +19,16 @@ export const FormInput = ({
   numberOfLines = 1,
   keyboardType = 'default',
   editable = true,
+  containerStyle,
+  labelStyle,
+  inputStyle,
+  errorStyle,
   ...props
 }) => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label && (
-        <Text style={styles.label}>
+        <Text style={[styles.label, labelStyle]}>
           {label}
           {required && <Text style={styles.asterisk}> *</Text>}
         </Text>
@@ -35,6 +39,7 @@ export const FormInput = ({
           multiline && { minHeight: 100 },
           error && styles.inputError,
           !editable && styles.inputDisabled,
+          inputStyle,
         ]}
         placeholder={placeholder}
         placeholderTextColor={COLORS.textHint}
@@ -46,7 +51,7 @@ export const FormInput = ({
         editable={editable}
         {...props}
       />
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, errorStyle]}>{error}</Text>}
     </View>
   );
 };

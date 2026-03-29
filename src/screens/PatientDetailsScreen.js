@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { FormInput, Button, Card } from '../components';
@@ -37,9 +38,16 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
   } = useTransfer();
 
   const [errors, setErrors] = useState({});
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const isLarge = width >= 1024;
 
   const validate = () => {
     const newErrors = {};
+
+    if (!validateNotEmpty(state.sendingFacility?.name)) {
+      newErrors.sendingHospital = 'Sending hospital is required';
+    }
 
     if (!validateNotEmpty(state.patientName)) {
       newErrors.patientName = 'Patient name is required';
@@ -261,20 +269,48 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Patient Details</Text>
-          <Text style={styles.subtitle}>Screen 1/6 - Basic Information</Text>
+      <View style={styles.bgOrbTop} />
+      <View style={styles.bgOrbBottom} />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
+      >
+        <View style={[styles.brandRow, isTablet && styles.brandRowTablet, isLarge && styles.brandRowLarge]}>
+          <View style={[styles.brandEmblemOuter, isTablet && styles.brandEmblemOuterTablet]}>
+            <View style={styles.brandPulseDot} />
+            <View style={[styles.brandEmblemInner, isTablet && styles.brandEmblemInnerTablet]}>
+              <Text style={styles.brandEmblemText}>+</Text>
+            </View>
+          </View>
+          <Text style={[styles.brandNameText, isTablet && styles.brandNameTextTablet]}>MediCo</Text>
         </View>
 
-        <Card style={styles.formCard}>
-          <ImageScanner onExtracted={handleExtractedData} formStep="patient" />
+        <View style={[styles.headerCard, isTablet && styles.headerCardTablet, isLarge && styles.headerCardLarge]}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepBadgeText}>Step 1 of 6</Text>
+          </View>
+          <Text style={styles.title}>Patient Details</Text>
+          <Text style={styles.subtitle}>Add core patient information to start the transfer</Text>
+        </View>
+
+        <Card style={[styles.formCard, isTablet && styles.formCardTablet, isLarge && styles.formCardLarge]}>
+          <View style={styles.scannerSection}>
+            <ImageScanner onExtracted={handleExtractedData} formStep="patient" />
+          </View>
 
           <FormInput
             label="Sending Hospital"
             placeholder="Your hospital"
             value={state.sendingFacility.name}
             editable={false}
+            error={errors.sendingHospital}
+            required
+            containerStyle={styles.fieldContainer}
+            labelStyle={styles.fieldLabel}
+            inputStyle={styles.fieldInputDisabled}
           />
 
           <FormInput
@@ -283,7 +319,11 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
             value={state.patientName}
             onChangeText={setPatientName}
             error={errors.patientName}
-            required
+            required={!state.patientName?.trim()}
+            containerStyle={styles.fieldContainer}
+            labelStyle={styles.fieldLabel}
+            inputStyle={styles.fieldInput}
+            errorStyle={styles.fieldError}
           />
 
           <FormInput
@@ -292,7 +332,11 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
             value={state.patientID}
             onChangeText={setPatientID}
             error={errors.patientID}
-            required
+            required={!state.patientID?.trim()}
+            containerStyle={styles.fieldContainer}
+            labelStyle={styles.fieldLabel}
+            inputStyle={styles.fieldInput}
+            errorStyle={styles.fieldError}
           />
 
           <FormInput
@@ -302,31 +346,37 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
             onChangeText={setPatientAge}
             error={errors.patientAge}
             keyboardType="numeric"
-            required
+            required={!state.patientAge?.trim()}
+            containerStyle={styles.fieldContainer}
+            labelStyle={styles.fieldLabel}
+            inputStyle={styles.fieldInput}
+            errorStyle={styles.fieldError}
           />
         </Card>
 
-        <Card style={styles.infoCard} shadow="none">
+        <Card style={[styles.infoCard, isTablet && styles.infoCardTablet]} shadow="none" padding={10}>
           <Text style={styles.infoText}>
-            ⏱️ ~30 seconds to fill
+            Usually takes around 30 seconds
           </Text>
         </Card>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isTablet && styles.footerTablet]}>
         <Button
           title="← BACK"
           onPress={onBack}
           variant="secondary"
-          size="lg"
+          size="md"
           style={styles.halfButton}
+          textStyle={styles.backButtonText}
         />
         <Button
           title="NEXT →"
           onPress={handleNext}
           variant="primary"
-          size="lg"
-          style={styles.halfButton}
+          size="md"
+          style={[styles.halfButton, styles.nextButton]}
+          textStyle={styles.nextButtonText}
         />
       </View>
     </View>
@@ -336,42 +386,269 @@ export const PatientDetailsScreen = ({ onNext, onBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F2F7FA',
+  },
+  bgOrbTop: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#D2EEF4',
+    top: -90,
+    right: -70,
+    opacity: 0.8,
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: '#FFE0CC',
+    bottom: -120,
+    left: -110,
+    opacity: 0.7,
   },
   scrollView: {
     flex: 1,
-    padding: SPACING.lg,
   },
-  header: {
-    marginBottom: SPACING.xl,
+  scrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: 52,
+    paddingBottom: SPACING.lg,
   },
-  title: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
+  scrollContentTablet: {
+    alignItems: 'center',
+    paddingTop: 64,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: SPACING.md,
+  },
+  brandRowTablet: {
+    width: '92%',
+    maxWidth: 760,
+  },
+  brandRowLarge: {
+    maxWidth: 860,
+  },
+  brandEmblemOuter: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#0A365D',
+    borderWidth: 2,
+    borderColor: '#2D7FBA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandEmblemOuterTablet: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  brandPulseDot: {
+    position: 'absolute',
+    right: -2,
+    top: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#59D9A5',
+    borderWidth: 2,
+    borderColor: '#EAF8F2',
+  },
+  brandEmblemInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#1E6EA8',
+    borderWidth: 2,
+    borderColor: '#D5ECFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandEmblemInnerTablet: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  brandEmblemText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+    lineHeight: 15,
+  },
+  brandNameText: {
+    color: '#0E4A7C',
+    fontSize: 23,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+  },
+  brandNameTextTablet: {
+    fontSize: 27,
+  },
+  headerCard: {
+    borderRadius: 18,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 10,
+    backgroundColor: '#0E4A7C',
+    borderWidth: 1,
+    borderColor: '#C2E1F6',
     marginBottom: SPACING.sm,
   },
+  headerCardTablet: {
+    width: '92%',
+    maxWidth: 760,
+  },
+  headerCardLarge: {
+    maxWidth: 860,
+  },
+  stepBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 6,
+  },
+  stepBadgeText: {
+    color: '#E4F4FF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  title: {
+    fontSize: 19,
+    color: '#F5FBFF',
+    marginBottom: 4,
+    fontWeight: '900',
+    letterSpacing: 0.15,
+    lineHeight: 23,
+  },
   subtitle: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.textSecondary,
+    fontSize: 12,
+    color: '#D4E9F8',
+    fontWeight: '500',
+    lineHeight: 16,
+    maxWidth: 320,
   },
   formCard: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
+    backgroundColor: '#FFFFFF',
+  },
+  scannerSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  formCardTablet: {
+    width: '92%',
+    maxWidth: 760,
+  },
+  formCardLarge: {
+    maxWidth: 860,
+  },
+  fieldContainer: {
+    marginBottom: 4,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  fieldLabel: {
+    fontSize: 10,
+    color: '#1E4B70',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginTop: 4,
+    marginBottom: 6,
+    marginLeft: 8,
+  },
+  fieldInput: {
+    fontSize: 14,
+    color: '#102A43',
+    fontWeight: '600',
+    borderRadius: 12,
+    borderColor: '#CFE0ED',
+    backgroundColor: '#F8FCFF',
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  fieldInputDisabled: {
+    fontSize: 14,
+    color: '#486176',
+    fontWeight: '600',
+    borderRadius: 12,
+    borderColor: '#D8E5F0',
+    backgroundColor: '#EFF6FC',
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  fieldError: {
+    fontSize: 10,
+    color: '#B42318',
+    marginTop: 6,
+    marginLeft: 8,
+    paddingRight: 8,
+    fontWeight: '600',
+    lineHeight: 14,
   },
   infoCard: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8E7F3',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    marginBottom: SPACING.sm,
+  },
+  infoCardTablet: {
+    width: '92%',
+    maxWidth: 760,
   },
   infoText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontSize: 11,
+    color: '#5D7285',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
+    paddingTop: 6,
+    paddingBottom: SPACING.md,
     gap: SPACING.md,
+    backgroundColor: 'rgba(242,247,250,0.94)',
+    borderTopWidth: 1,
+    borderTopColor: '#DCEAF5',
+  },
+  footerTablet: {
+    alignSelf: 'center',
+    width: '92%',
+    maxWidth: 760,
   },
   halfButton: {
     flex: 1,
+    borderRadius: 12,
+  },
+  backButtonText: {
+    color: '#1E4B70',
+    fontWeight: '800',
+    letterSpacing: 0.25,
+  },
+  nextButton: {
+    backgroundColor: '#0F4C81',
+  },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    letterSpacing: 0.35,
   },
 });

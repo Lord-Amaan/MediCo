@@ -18,6 +18,7 @@ import {
   QRDisplayScreen,
   QRScannerScreen,
   ReceivedTransferScreen,
+  TransferHistoryScreen,
 } from './src/screens';
 
 const API_BASE_URL = 'http://192.168.0.124:5000/api';
@@ -157,6 +158,10 @@ function AppContent() {
               setCurrentScreen('Home');
             }}
           />
+        )}
+
+        {currentScreen === 'TransferHistory' && (
+          <TransferHistoryScreen onClose={goToHome} />
         )}
       </View>
     </TransferProvider>

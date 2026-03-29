@@ -22,6 +22,7 @@
     "body-parser": "^1.20.2",
     "cors": "^2.8.6",
     "dotenv": "^16.0.3",
+    "expo-audio": "55.0.10-canary-20260328-bdc6273",
     "expo-crypto": "~15.0.8",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",

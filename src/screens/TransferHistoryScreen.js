@@ -25,13 +25,9 @@ const TransferHistoryScreen = ({ patientID, onClose }) => {
   const fetchTransferHistory = async () => {
     try {
       setLoading(true);
-      if (!patientID) {
-        setHistory([]);
-        setError('Patient ID missing in scanned data');
-        return;
-      }
-
-      const response = await api.get(`/transfers/patient/${patientID}`);
+      setError(null);
+      const endpoint = patientID ? `/transfers/patient/${patientID}` : '/transfers?limit=100';
+      const response = await api.get(endpoint);
       setHistory(response.data.transfers || []);
     } catch (err) {
       console.error('Failed to fetch history:', err);
@@ -96,12 +92,12 @@ const TransferHistoryScreen = ({ patientID, onClose }) => {
         <TouchableOpacity onPress={onClose}>
           <MaterialIcons name="close" size={24} color={COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>📋 Transfer History</Text>
+        <Text style={styles.title}>{patientID ? '📋 Patient Transfer History' : '📋 Transfer History'}</Text>
         <Text style={styles.subtitle}>{history.length} transfer{history.length !== 1 ? 's' : ''}</Text>
       </View>
 
       {/* PATIENT IDENTIFICATION HEADER - Shows how DB distinguishes this patient */}
-      {history.length > 0 && history[0]?.patient && (
+      {patientID && history.length > 0 && history[0]?.patient && (
         <Card style={styles.patientIdentificationCard}>
           <View style={styles.patientIdHeader}>
             <MaterialIcons name="person" size={28} color={COLORS.primary} />

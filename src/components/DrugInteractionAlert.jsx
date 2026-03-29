@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
 
 export default function DrugInteractionAlert({
   visible,
@@ -18,43 +18,73 @@ export default function DrugInteractionAlert({
     return `${conflict.drug1} + ${conflict.allergy} allergy`;
   };
 
+  const totalConflicts = (conflicts || []).length;
+
   return (
     <Modal visible={visible} transparent={true} animationType="slide">
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="rounded-t-3xl bg-white p-6" style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-          <View className="mb-2 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Text className="mr-2 text-2xl">⚠</Text>
-              <Text className={`text-lg font-bold ${hasCritical ? 'text-red-600' : 'text-amber-600'}`}>
+      <View style={styles.backdrop}>
+        <View style={styles.sheet}>
+          <View style={styles.handleWrap}>
+            <View style={styles.handle} />
+          </View>
+
+          <View style={styles.headerRow}>
+            <View style={styles.titleWrap}>
+              <Text style={styles.warningIcon}>!</Text>
+              <View>
+                <Text style={[styles.titleText, hasCritical ? styles.titleCritical : styles.titleWarning]}>
                 {hasCritical ? 'Critical Conflicts Found' : 'Warnings Found'}
               </Text>
+                <Text style={styles.subtitleText}>Review medication and allergy risks before transfer</Text>
+              </View>
             </View>
             {aiUsed ? (
-              <View className="rounded-full bg-green-100 px-3 py-1">
-                <Text className="text-xs font-semibold text-green-700">AI Verified</Text>
+              <View style={styles.aiBadge}>
+                <Text style={styles.aiBadgeText}>AI Verified</Text>
               </View>
             ) : null}
           </View>
 
-          <Text className="mb-3 text-sm text-gray-500">Review before proceeding with transfer</Text>
+          <View style={styles.metricsRow}>
+            <View style={styles.metricPill}>
+              <Text style={styles.metricLabel}>Total</Text>
+              <Text style={styles.metricValue}>{totalConflicts}</Text>
+            </View>
+            <View style={[styles.metricPill, styles.metricCritical]}>
+              <Text style={styles.metricLabel}>Critical</Text>
+              <Text style={styles.metricValue}>{criticalConflicts.length}</Text>
+            </View>
+            <View style={[styles.metricPill, styles.metricWarning]}>
+              <Text style={styles.metricLabel}>Warnings</Text>
+              <Text style={styles.metricValue}>{warningConflicts.length}</Text>
+            </View>
+          </View>
 
-          <View className="mb-4 h-px bg-gray-200" />
+          <View style={styles.divider} />
 
-          <ScrollView className="mb-4" style={{ maxHeight: 320 }}>
+          <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
             {criticalConflicts.map((conflict, index) => (
               <View
                 key={`critical-${index}`}
-                className="mb-3 rounded-xl border p-3"
-                style={{ backgroundColor: '#FCEBEB', borderColor: '#E24B4A' }}
+                style={[styles.conflictCard, styles.criticalCard]}
               >
-                <Text className="mb-1 font-bold text-red-600">CRITICAL</Text>
-                <Text className="mb-1 text-sm font-semibold text-gray-800">
-                  {conflict.type === 'Drug-Drug' ? 'Drug-Drug Interaction' : 'Allergy Conflict'}
+                <View style={styles.conflictHeaderRow}>
+                  <Text style={[styles.riskBadge, styles.riskBadgeCritical]}>CRITICAL</Text>
+                  <Text style={styles.conflictTypeText}>
+                    {conflict.type === 'Drug-Drug' ? 'Drug-Drug Interaction' : 'Allergy Conflict'}
+                  </Text>
+                </View>
+                <Text style={styles.conflictLine}>
+                  Involved: <Text style={styles.conflictLineValue}>{renderInvolvedText(conflict)}</Text>
                 </Text>
-                <Text className="mb-1 text-sm text-gray-700">Involved: {renderInvolvedText(conflict)}</Text>
-                <Text className="mb-1 text-sm text-gray-700">Reason: {conflict.reason}</Text>
+                <Text style={styles.conflictLine}>
+                  Reason: <Text style={styles.conflictLineValue}>{conflict.reason}</Text>
+                </Text>
                 {conflict.recommendation ? (
-                  <Text className="text-sm italic text-gray-700">Recommendation: {conflict.recommendation}</Text>
+                  <View style={styles.recommendationBox}>
+                    <Text style={styles.recommendationLabel}>Recommendation</Text>
+                    <Text style={styles.recommendationText}>{conflict.recommendation}</Text>
+                  </View>
                 ) : null}
               </View>
             ))}
@@ -62,36 +92,42 @@ export default function DrugInteractionAlert({
             {warningConflicts.map((conflict, index) => (
               <View
                 key={`warning-${index}`}
-                className="mb-3 rounded-xl border p-3"
-                style={{ backgroundColor: '#FAEEDA', borderColor: '#BA7517' }}
+                style={[styles.conflictCard, styles.warningCard]}
               >
-                <Text className="mb-1 font-bold" style={{ color: '#BA7517' }}>WARNING</Text>
-                <Text className="mb-1 text-sm font-semibold text-gray-800">
+                <View style={styles.conflictHeaderRow}>
+                  <Text style={[styles.riskBadge, styles.riskBadgeWarning]}>WARNING</Text>
+                  <Text style={styles.conflictTypeText}>
                   {conflict.type === 'Drug-Drug' ? 'Drug-Drug Interaction' : 'Allergy Conflict'}
                 </Text>
-                <Text className="mb-1 text-sm text-gray-700">Involved: {renderInvolvedText(conflict)}</Text>
-                <Text className="mb-1 text-sm text-gray-700">Reason: {conflict.reason}</Text>
+                </View>
+                <Text style={styles.conflictLine}>
+                  Involved: <Text style={styles.conflictLineValue}>{renderInvolvedText(conflict)}</Text>
+                </Text>
+                <Text style={styles.conflictLine}>
+                  Reason: <Text style={styles.conflictLineValue}>{conflict.reason}</Text>
+                </Text>
                 {conflict.recommendation ? (
-                  <Text className="text-sm italic text-gray-700">Recommendation: {conflict.recommendation}</Text>
+                  <View style={styles.recommendationBox}>
+                    <Text style={styles.recommendationLabel}>Recommendation</Text>
+                    <Text style={styles.recommendationText}>{conflict.recommendation}</Text>
+                  </View>
                 ) : null}
               </View>
             ))}
           </ScrollView>
 
           <TouchableOpacity
-            className="mb-3 w-full rounded-xl px-4 py-4"
-            style={{ backgroundColor: '#E24B4A' }}
+            style={styles.primaryActionButton}
             onPress={onGoBack}
           >
-            <Text className="text-center font-bold text-white">Go Back and Edit Medications</Text>
+            <Text style={styles.primaryActionText}>Go Back and Edit Medications</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className={`w-full rounded-xl px-4 py-4 ${hasCritical ? 'border-2 bg-white' : 'bg-gray-200'}`}
-            style={hasCritical ? { borderColor: '#E24B4A' } : undefined}
+            style={[styles.secondaryActionButton, hasCritical ? styles.secondaryCritical : styles.secondaryWarning]}
             onPress={onContinue}
           >
-            <Text className={`text-center font-bold ${hasCritical ? 'text-red-600' : 'text-gray-700'}`}>
+            <Text style={[styles.secondaryActionText, hasCritical ? styles.secondaryCriticalText : styles.secondaryWarningText]}>
               {hasCritical ? 'Override and Continue (Not Recommended)' : 'I Acknowledge — Continue Transfer'}
             </Text>
           </TouchableOpacity>
@@ -100,3 +136,250 @@ export default function DrugInteractionAlert({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(8, 20, 32, 0.58)',
+  },
+  sheet: {
+    maxHeight: '88%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: '#F8FCFF',
+    borderWidth: 1,
+    borderColor: '#CFE2F1',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  handleWrap: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  handle: {
+    width: 52,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: '#BFD3E3',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  titleWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    flex: 1,
+  },
+  warningIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    color: '#FFFFFF',
+    backgroundColor: '#D64545',
+    fontSize: 15,
+    fontWeight: '900',
+    overflow: 'hidden',
+  },
+  titleText: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+  },
+  titleCritical: {
+    color: '#A61B1B',
+  },
+  titleWarning: {
+    color: '#9A610F',
+  },
+  subtitleText: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#5F7385',
+  },
+  aiBadge: {
+    backgroundColor: '#EAF8F1',
+    borderWidth: 1,
+    borderColor: '#A8E4C5',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  aiBadgeText: {
+    color: '#157347',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  metricsRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricPill: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D3E3EE',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  metricCritical: {
+    borderColor: '#F1C4C4',
+    backgroundColor: '#FFF6F6',
+  },
+  metricWarning: {
+    borderColor: '#F1DFB8',
+    backgroundColor: '#FFF9EE',
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#5F7385',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  metricValue: {
+    marginTop: 2,
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#12324A',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#D9E7F2',
+    marginVertical: 12,
+  },
+  scrollArea: {
+    maxHeight: 340,
+  },
+  scrollContent: {
+    paddingBottom: 4,
+  },
+  conflictCard: {
+    marginBottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  criticalCard: {
+    backgroundColor: '#FFF2F2',
+    borderColor: '#E8AAAA',
+  },
+  warningCard: {
+    backgroundColor: '#FFF8E9',
+    borderColor: '#E6C98C',
+  },
+  conflictHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  riskBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    overflow: 'hidden',
+  },
+  riskBadgeCritical: {
+    backgroundColor: '#D64545',
+    color: '#FFFFFF',
+  },
+  riskBadgeWarning: {
+    backgroundColor: '#A4660D',
+    color: '#FFFFFF',
+  },
+  conflictTypeText: {
+    fontSize: 12,
+    color: '#1B3B55',
+    fontWeight: '800',
+  },
+  conflictLine: {
+    fontSize: 12,
+    color: '#355169',
+    lineHeight: 17,
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  conflictLineValue: {
+    color: '#132B3D',
+    fontWeight: '700',
+  },
+  recommendationBox: {
+    marginTop: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D7E6F2',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  recommendationLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.45,
+    fontWeight: '800',
+    color: '#365975',
+    marginBottom: 2,
+  },
+  recommendationText: {
+    fontSize: 12,
+    color: '#1F3D55',
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  primaryActionButton: {
+    marginTop: 12,
+    backgroundColor: '#CC3535',
+    borderRadius: 12,
+    paddingVertical: 13,
+    borderWidth: 1,
+    borderColor: '#B22A2A',
+  },
+  primaryActionText: {
+    textAlign: 'center',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+  },
+  secondaryActionButton: {
+    marginTop: 10,
+    borderRadius: 12,
+    paddingVertical: 13,
+    borderWidth: 1,
+  },
+  secondaryCritical: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CD4A4A',
+  },
+  secondaryWarning: {
+    backgroundColor: '#EAF2F8',
+    borderColor: '#C8DAE8',
+  },
+  secondaryActionText: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  secondaryCriticalText: {
+    color: '#B22A2A',
+  },
+  secondaryWarningText: {
+    color: '#274A63',
+  },
+});
