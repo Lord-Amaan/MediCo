@@ -47,6 +47,9 @@ app.use('/api/transfers', require('./routes/transfers'));
 // Scan report route
 app.use('/api', require('./routes/scanReport'));
 
+// NMC verification routes
+app.use('/api/nmc', require('./routes/nmc'));
+
 app.use('/api', interactionRoutes);
 
 // ============================================================================

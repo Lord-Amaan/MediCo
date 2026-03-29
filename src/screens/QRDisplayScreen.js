@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
@@ -25,6 +26,11 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
   const { state, setQRCode, setShareLink, setTransferID, resetForm } = useTransfer();
   const { api } = useAuth();
   const { isOnline } = useNetworkStatus();
+  const { width } = useWindowDimensions();
+  const isSmallPhone = width < 375;
+  const isPhone = width >= 375 && width < 600;
+  const isTablet = width >= 600 && width < 900;
+  const isLarge = width >= 900;
   const {
     pendingCount,
     isSyncing,
@@ -333,7 +339,7 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isTablet && styles.containerTablet, isLarge && styles.containerLarge]}>
       <OfflineStatusBar
         onSyncPress={syncPendingTransfers}
         isOnline={isOnline}
@@ -341,33 +347,41 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
         isSyncing={isSyncing}
       />
       <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.successEmoji}>🎉</Text>
-          <Text style={styles.title}>Transfer Created!</Text>
-          <Text style={styles.subtitle}>Screen 6/6 - QR Code Ready</Text>
+        <View style={[styles.logoSection, isSmallPhone && styles.logoSectionSmall, isTablet && styles.logoSectionTablet]}>
+          <View style={[styles.brandEmblemOuter, isTablet && styles.brandEmblemOuterTablet]}>
+            <View style={[styles.brandEmblemInner, isTablet && styles.brandEmblemInnerTablet]}>
+              <Text style={[styles.brandEmblemText, isTablet && styles.brandEmblemTextTablet]}>+</Text>
+            </View>
+            <View style={styles.brandPulseDot} />
+          </View>
+          <Text style={[styles.brandNameText, isSmallPhone && styles.brandNameTextSmall, isTablet && styles.brandNameTextTablet]}>MediCo</Text>
+        </View>
+        <View style={[styles.header, isSmallPhone && styles.headerSmall, isTablet && styles.headerTablet]}>
+          <Text style={[styles.title, isSmallPhone && styles.titleSmall, isTablet && styles.titleTablet]}>Transfer Created</Text>
+          <Text style={[styles.subtitle, isSmallPhone && styles.subtitleSmall, isTablet && styles.subtitleTablet]}>QR Code Ready</Text>
           {mode === 'online' && <Text style={styles.onlineBadge}>Saved to server</Text>}
         </View>
 
         {mode === 'offline' && (
-          <Card style={styles.offlineBanner} shadow="none">
-            <Text style={styles.offlineBannerTitle}>Offline Mode - Full record encoded in QR</Text>
-            <Text style={styles.offlineBannerText}>Will sync to server when internet is available</Text>
+          <Card style={[styles.offlineBanner, isSmallPhone && styles.offlineBannerSmall, isTablet && styles.offlineBannerTablet]} shadow="none">
+            <Text style={[styles.offlineBannerTitle, isSmallPhone && styles.offlineBannerTitleSmall]}>Offline Mode - Full record encoded in QR</Text>
+            <Text style={[styles.offlineBannerText, isSmallPhone && styles.offlineBannerTextSmall]}>Will sync to server when internet is available</Text>
           </Card>
         )}
 
         {/* QR Code Display */}
         {qrDataString && (
-          <Card style={styles.qrCard} shadow="medium">
-            <View style={styles.qrContainer}>
+          <Card style={[styles.qrCard, isSmallPhone && styles.qrCardSmall, isTablet && styles.qrCardTablet]} shadow="medium">
+            <View style={[styles.qrContainer, isSmallPhone && styles.qrContainerSmall, isTablet && styles.qrContainerTablet]}>
               <QRCode
                 value={qrDataString}
-                size={250}
-                color={COLORS.black}
-                backgroundColor={COLORS.white}
+                size={isSmallPhone ? 200 : isTablet ? 300 : 250}
+                color="#0E4A7C"
+                backgroundColor="#FFFFFF"
                 logoBorderRadius={10}
               />
             </View>
-            <Text style={styles.qrHelper}>
+            <Text style={[styles.qrHelper, isSmallPhone && styles.qrHelperSmall]}>
               {mode === 'offline'
                 ? 'This QR contains the complete patient record for offline use'
                 : 'Scan to share all patient data'}
@@ -427,12 +441,12 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
           <Text style={styles.summaryInfo}>Transfer Ref: {transferData?.transferID || state.transferID || 'N/A'}</Text>
           {state.allergies.length > 0 && (
             <Text style={styles.summaryWarning}>
-              ⚠️ Allergies: {state.allergies.join(', ')}
+              Allergies: {state.allergies.join(', ')}
             </Text>
           )}
           {state.medications.length > 0 && (
             <Text style={styles.summaryInfo}>
-              💊 Meds: {state.medications.join(', ')}
+              Medications: {state.medications.join(', ')}
             </Text>
           )}
           <Text style={styles.summaryReason}>
@@ -449,55 +463,55 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, isSmallPhone && styles.actionButtonsSmall, isTablet && styles.actionButtonsTablet]}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, isSmallPhone && styles.actionButtonSmall]}
             onPress={() => {}}
           >
-            <Text style={styles.actionButtonText}>🖨️ PRINT</Text>
+            <Text style={[styles.actionButtonText, isSmallPhone && styles.actionButtonTextSmall]}>PRINT</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, isSmallPhone && styles.actionButtonSmall]}
             onPress={handleShare}
           >
-            <Text style={styles.actionButtonText}>📱 SHARE</Text>
+            <Text style={[styles.actionButtonText, isSmallPhone && styles.actionButtonTextSmall]}>SHARE</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, isSmallPhone && styles.actionButtonSmall]}
             onPress={() => {}}
           >
-            <Text style={styles.actionButtonText}>📋 COPY LINK</Text>
+            <Text style={[styles.actionButtonText, isSmallPhone && styles.actionButtonTextSmall]}>COPY LINK</Text>
           </TouchableOpacity>
         </View>
 
         {/* Info Messages */}
-        <Card style={styles.infoCard} shadow="none">
-          <Text style={styles.infoTitle}>Next Steps:</Text>
-          <Text style={styles.infoText}>
-            ✓ Print this QR code or send the link to receiving hospital
+        <Card style={[styles.infoCard, isSmallPhone && styles.infoCardSmall, isTablet && styles.infoCardTablet]} shadow="none">
+          <Text style={[styles.infoTitle, isSmallPhone && styles.infoTitleSmall, isTablet && styles.infoTitleTablet]}>Next Steps:</Text>
+          <Text style={[styles.infoText, isSmallPhone && styles.infoTextSmall]}>
+            Print this QR code or send the link to receiving hospital
           </Text>
-          <Text style={styles.infoText}>
-            ✓ Attach QR print to patient transfer folder
+          <Text style={[styles.infoText, isSmallPhone && styles.infoTextSmall]}>
+            Attach QR print to patient transfer folder
           </Text>
-          <Text style={styles.infoText}>
-            ✓ Share link via SMS/Email with ambulance team
+          <Text style={[styles.infoText, isSmallPhone && styles.infoTextSmall]}>
+            Share link via SMS/Email with ambulance team
           </Text>
         </Card>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, isSmallPhone && styles.footerSmall, isTablet && styles.footerTablet]}>
         <Button
-          title="← BACK"
+          title="BACK"
           onPress={onBack}
           variant="secondary"
-          size="lg"
+          size="md"
           style={styles.halfButton}
         />
         <Button
-          title="✓ DONE"
+          title="DONE"
           onPress={handleDone}
           variant="primary"
-          size="lg"
+          size="md"
           style={styles.halfButton}
         />
       </View>
@@ -508,11 +522,107 @@ export const QRDisplayScreen = ({ onDone, onBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F2F7FA',
+  },
+  containerTablet: {
+    paddingHorizontal: SPACING.xl,
+  },
+  containerLarge: {
+    paddingHorizontal: SPACING.xxl,
   },
   scrollView: {
     flex: 1,
     padding: SPACING.lg,
+  },
+  logoSection: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xxl,
+    paddingBottom: SPACING.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  logoSectionSmall: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  logoSectionTablet: {
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.xxl,
+    paddingBottom: SPACING.xl,
+    gap: SPACING.lg,
+  },
+  brandEmblemOuter: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#0A365D',
+    borderWidth: 2,
+    borderColor: '#2D7FBA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0B2239',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  brandEmblemOuterTablet: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  brandPulseDot: {
+    position: 'absolute',
+    right: -2,
+    top: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#59D9A5',
+    borderWidth: 2,
+    borderColor: '#EAF8F2',
+  },
+  brandEmblemInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#1E6EA8',
+    borderWidth: 2,
+    borderColor: '#D5ECFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandEmblemInnerTablet: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  brandEmblemText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+    lineHeight: 15,
+  },
+  brandEmblemTextTablet: {
+    fontSize: 18,
+    lineHeight: 18,
+  },
+  brandNameText: {
+    color: '#0E4A7C',
+    fontSize: 23,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+  },
+  brandNameTextSmall: {
+    fontSize: 20,
+    letterSpacing: 0.1,
+  },
+  brandNameTextTablet: {
+    fontSize: 28,
+    letterSpacing: 0.3,
   },
   loadingContainer: {
     flex: 1,
@@ -520,9 +630,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: '#5A7388',
     marginTop: SPACING.md,
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
@@ -531,15 +642,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
   },
   errorTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.error,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#C62828',
     marginBottom: SPACING.md,
   },
   errorText: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.textSecondary,
+    fontSize: 14,
+    color: '#5A7388',
     marginBottom: SPACING.lg,
     textAlign: 'center',
+    lineHeight: 20,
   },
   retryButton: {
     paddingHorizontal: SPACING.xl,
@@ -548,23 +661,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
-  successEmoji: {
-    fontSize: 48,
-    marginBottom: SPACING.md,
+  headerSmall: {
+    marginBottom: SPACING.lg,
+  },
+  headerTablet: {
+    marginBottom: SPACING.xxl,
   },
   title: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0E4A7C',
     marginBottom: SPACING.sm,
     textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  titleSmall: {
+    fontSize: 20,
+    marginBottom: SPACING.xs,
+    letterSpacing: 0.3,
+  },
+  titleTablet: {
+    fontSize: 28,
+    marginBottom: SPACING.md,
+    letterSpacing: 0.6,
   },
   subtitle: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: '#5A7388',
     textAlign: 'center',
+    fontWeight: '500',
+  },
+  subtitleSmall: {
+    fontSize: 12,
+  },
+  subtitleTablet: {
+    fontSize: 15,
   },
   onlineBadge: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 11,
     marginTop: SPACING.sm,
     color: '#2E7D32',
     backgroundColor: '#EAF3DE',
@@ -572,47 +706,94 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: 999,
     overflow: 'hidden',
+    fontWeight: '600',
   },
   offlineBanner: {
     marginBottom: SPACING.lg,
     backgroundColor: '#FAEEDA',
     borderLeftWidth: 4,
     borderLeftColor: '#BA7517',
+    padding: SPACING.md,
+    borderRadius: 8,
+  },
+  offlineBannerSmall: {
+    marginBottom: SPACING.md,
+    padding: SPACING.sm,
+  },
+  offlineBannerTablet: {
+    marginBottom: SPACING.xl,
+    padding: SPACING.lg,
   },
   offlineBannerTitle: {
-    ...TYPOGRAPHY.body2,
+    fontSize: 13,
     color: '#8A5A00',
     fontWeight: '700',
     marginBottom: SPACING.xs,
   },
+  offlineBannerTitleSmall: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
   offlineBannerText: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 12,
     color: '#A26A00',
+  },
+  offlineBannerTextSmall: {
+    fontSize: 11,
   },
   qrCard: {
     alignItems: 'center',
     marginBottom: SPACING.lg,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
+    padding: SPACING.md,
+    borderRadius: 12,
+  },
+  qrCardSmall: {
+    marginBottom: SPACING.md,
+    padding: SPACING.sm,
+  },
+  qrCardTablet: {
+    marginBottom: SPACING.xl,
+    padding: SPACING.lg,
   },
   qrContainer: {
     width: 250,
     height: 250,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     marginBottom: SPACING.md,
   },
+  qrContainerSmall: {
+    width: 200,
+    height: 200,
+    marginBottom: SPACING.sm,
+  },
+  qrContainerTablet: {
+    width: 300,
+    height: 300,
+    marginBottom: SPACING.lg,
+  },
   qrHelper: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontSize: 12,
+    color: '#5A7388',
     textAlign: 'center',
+    fontWeight: '500',
+  },
+  qrHelperSmall: {
+    fontSize: 11,
   },
   pendingSyncCard: {
     marginBottom: SPACING.md,
     backgroundColor: '#EAF3DE',
+    padding: SPACING.md,
+    borderRadius: 8,
   },
   pendingSyncText: {
-    ...TYPOGRAPHY.body2,
+    fontSize: 13,
     color: '#2E7D32',
     textAlign: 'center',
     fontWeight: '600',
@@ -620,23 +801,25 @@ const styles = StyleSheet.create({
   pendingOfflineCard: {
     marginBottom: SPACING.md,
     backgroundColor: '#FAEEDA',
+    padding: SPACING.md,
+    borderRadius: 8,
   },
   pendingOfflineText: {
-    ...TYPOGRAPHY.body2,
+    fontSize: 13,
     color: '#A26A00',
     textAlign: 'center',
     fontWeight: '600',
   },
   syncNowButton: {
     marginBottom: SPACING.md,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#0E4A7C',
     paddingVertical: SPACING.md,
     borderRadius: 8,
     alignItems: 'center',
   },
   syncNowButtonText: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.white,
+    fontSize: 14,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   syncErrorCard: {
@@ -644,15 +827,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEECEC',
     borderLeftWidth: 4,
     borderLeftColor: '#C62828',
+    padding: SPACING.md,
+    borderRadius: 8,
   },
   syncErrorText: {
-    ...TYPOGRAPHY.body2,
+    fontSize: 13,
     color: '#9B1C1C',
     fontWeight: '600',
     marginBottom: SPACING.xs,
   },
   syncErrorHint: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 11,
     color: '#B91C1C',
   },
   repairButton: {
@@ -664,8 +849,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   repairButtonText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.white,
+    fontSize: 11,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   resetQueueButton: {
@@ -679,72 +864,91 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   resetQueueButtonText: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 11,
     color: '#C62828',
     fontWeight: '700',
   },
   summaryCard: {
     marginBottom: SPACING.lg,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#E8F1F8',
+    padding: SPACING.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
   },
   summaryRow: {
     flexDirection: 'row',
     marginBottom: SPACING.md,
     justifyContent: 'space-between',
   },
+  summaryRowSmall: {
+    marginBottom: SPACING.sm,
+  },
   summaryLabel: {
-    ...TYPOGRAPHY.body1,
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: '#5A7388',
+    letterSpacing: 0.2,
+  },
+  summaryLabelSmall: {
+    fontSize: 12,
   },
   summaryValue: {
-    ...TYPOGRAPHY.body1,
-    color: COLORS.textPrimary,
+    fontSize: 13,
+    color: '#0E4A7C',
     fontWeight: '500',
   },
+  summaryValueSmall: {
+    fontSize: 12,
+  },
   highlightedValue: {
-    color: COLORS.primary,
+    color: '#0E4A7C',
+    fontWeight: '700',
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.gray300,
+    backgroundColor: '#D5E7F4',
     marginVertical: SPACING.md,
   },
   summaryPatient: {
-    ...TYPOGRAPHY.body2,
-    color: COLORS.textPrimary,
+    fontSize: 13,
+    color: '#0E4A7C',
     fontWeight: '600',
     marginBottom: SPACING.sm,
   },
   summaryWarning: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.error,
+    fontSize: 12,
+    color: '#C62828',
     marginBottom: SPACING.sm,
     fontWeight: '500',
   },
   summaryInfo: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontSize: 12,
+    color: '#5A7388',
     marginBottom: SPACING.sm,
   },
   summaryReason: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontSize: 12,
+    color: '#5A7388',
     fontStyle: 'italic',
   },
   linkCard: {
     marginBottom: SPACING.lg,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: '#F8FCFF',
+    padding: SPACING.md,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
   },
   linkLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    fontSize: 11,
+    color: '#5A7388',
     marginBottom: SPACING.sm,
     fontWeight: '600',
   },
   linkValue: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.primary,
+    fontSize: 12,
+    color: '#0E4A7C',
     fontFamily: 'monospace',
   },
   actionButtons: {
@@ -753,41 +957,92 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
     gap: SPACING.md,
   },
+  actionButtonsSmall: {
+    marginBottom: SPACING.md,
+    gap: SPACING.sm,
+  },
+  actionButtonsTablet: {
+    marginBottom: SPACING.xl,
+    gap: SPACING.lg,
+  },
   actionButton: {
     flex: 1,
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.gray300,
+    borderColor: '#D5E7F4',
+  },
+  actionButtonSmall: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
   },
   actionButtonText: {
-    ...TYPOGRAPHY.body2,
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: '#0E4A7C',
+  },
+  actionButtonTextSmall: {
+    fontSize: 11,
   },
   infoCard: {
     marginBottom: SPACING.lg,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#E8F1F8',
+    padding: SPACING.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
+  },
+  infoCardSmall: {
+    marginBottom: SPACING.md,
+    padding: SPACING.sm,
+  },
+  infoCardTablet: {
+    marginBottom: SPACING.xl,
+    padding: SPACING.lg,
   },
   infoTitle: {
-    ...TYPOGRAPHY.body1,
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: '#0E4A7C',
     marginBottom: SPACING.md,
   },
-  infoText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+  infoTitleSmall: {
+    fontSize: 12,
     marginBottom: SPACING.sm,
+  },
+  infoTitleTablet: {
+    fontSize: 16,
+    marginBottom: SPACING.lg,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#5A7388',
+    marginBottom: SPACING.sm,
+    lineHeight: 18,
+  },
+  infoTextSmall: {
+    fontSize: 11,
+    marginBottom: SPACING.xs,
+    lineHeight: 16,
   },
   footer: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.lg,
     gap: SPACING.md,
+  },
+  footerSmall: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    gap: SPACING.sm,
+  },
+  footerTablet: {
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.xl,
+    gap: SPACING.lg,
   },
   halfButton: {
     flex: 1,

@@ -47,29 +47,33 @@ export const FilterTabs = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: SPACING.lg,
+    marginHorizontal: SPACING.md,
   },
   tabsWrapper: {
     flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 0,
   },
   tab: {
-    paddingVertical: SPACING.md,
+    paddingVertical: 6,
     paddingHorizontal: SPACING.lg,
     marginRight: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.gray100,
-    borderBottomWidth: 2,
+    backgroundColor: '#E8F1F8',
+    borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
   selectedTab: {
-    backgroundColor: COLORS.primaryLight,
-    borderBottomColor: COLORS.primary,
+    backgroundColor: '#D2EEF4',
+    borderBottomColor: '#0E4A7C',
   },
   tabText: {
-    ...TYPOGRAPHY.button,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#5A7388',
+    letterSpacing: 0.5,
   },
   selectedTabText: {
-    color: COLORS.primary,
+    color: '#0E4A7C',
+    fontWeight: '900',
   },
 });

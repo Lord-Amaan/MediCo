@@ -16,9 +16,11 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['Doctor', 'Nurse', 'Admin'], required: true },
     qualifications: [String],
 
-    permissions: [String], // ["Create_Transfer", "Review_Transfer", "Admin"]
+  // NMC Verification
+  registrationNumber: String, // Doctor's NMC Reg No
+  isNMCVerified: { type: Boolean, default: false },
+  nmcVerificationDate: Date,
 
-    isActive: { type: Boolean, default: true },
 
     // Authentication
     passwordHash: String,

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +19,14 @@ import TransferHistoryScreen from './TransferHistoryScreen';
 
 const ReceivedTransferScreen = ({ transferData, onClose, onAcknowledge }) => {
   const { api } = useAuth();
+  const { width } = useWindowDimensions();
+
+  // Responsive breakpoints
+  const isSmallPhone = width < 375;
+  const isPhone = width >= 375 && width < 600;
+  const isTablet = width >= 600 && width < 900;
+  const isLarge = width >= 900;
+
   const [loading, setLoading] = useState(false);
   const [detailedTransfer, setDetailedTransfer] = useState(null);
   const [showAcknowledgeForm, setShowAcknowledgeForm] = useState(false);
@@ -128,107 +137,107 @@ const ReceivedTransferScreen = ({ transferData, onClose, onAcknowledge }) => {
 
   return (
     <>
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, isTablet && styles.containerTablet, isLarge && styles.containerLarge]}>
         {/* CRITICAL INFORMATION - SURFACED PROMINENTLY */}
-        <View style={styles.criticalSection}>
+        <View style={[styles.criticalSection, isSmallPhone && styles.criticalSectionSmall]}>
           <View style={styles.criticalHeader}>
             <MaterialIcons name="warning" size={24} color="#fff" />
-            <Text style={styles.criticalTitle}>CRITICAL INFORMATION</Text>
+            <Text style={[styles.criticalTitle, isSmallPhone && styles.criticalTitleSmall]}>CRITICAL INFORMATION</Text>
           </View>
 
           {/* Allergies Card */}
-          <Card style={[styles.criticalCard, { borderLeftColor: '#ef4444', borderLeftWidth: 4 }]}>
-            <Text style={styles.criticalCardTitle}>⚠️ Known Allergies</Text>
+          <Card style={[styles.criticalCard, { borderLeftColor: '#ef4444', borderLeftWidth: 4 }, isSmallPhone && styles.criticalCardSmall]}>
+            <Text style={[styles.criticalCardTitle, isSmallPhone && styles.criticalCardTitleSmall]}>Known Allergies</Text>
             {transfer.critical?.allergies && transfer.critical.allergies.length > 0 ? (
               transfer.critical.allergies.map((allergy, i) => (
-                <Text key={i} style={styles.criticalCardValue}>
+                <Text key={i} style={[styles.criticalCardValue, isSmallPhone && styles.criticalCardValueSmall]}>
                   • {allergy.name || allergy}
                 </Text>
               ))
             ) : (
-              <Text style={styles.criticalCardValue}>No known allergies</Text>
+              <Text style={[styles.criticalCardValue, isSmallPhone && styles.criticalCardValueSmall]}>No known allergies</Text>
             )}
           </Card>
 
           {/* Critical Medications - Must Not Stop */}
-          <Card style={[styles.criticalCard, { borderLeftColor: '#f59e0b', borderLeftWidth: 4 }]}>
-            <Text style={styles.criticalCardTitle}>💊 Medications (MUST NOT STOP)</Text>
+          <Card style={[styles.criticalCard, { borderLeftColor: '#f59e0b', borderLeftWidth: 4 }, isSmallPhone && styles.criticalCardSmall]}>
+            <Text style={[styles.criticalCardTitle, isSmallPhone && styles.criticalCardTitleSmall]}>Medications (MUST NOT STOP)</Text>
             {transfer.critical?.activeMedications && transfer.critical.activeMedications.length > 0 ? (
               transfer.critical.activeMedications
                 .filter((med) => med.mustNotStop)
                 .map((med, i) => (
-                  <Text key={i} style={styles.criticalCardValue}>
+                  <Text key={i} style={[styles.criticalCardValue, isSmallPhone && styles.criticalCardValueSmall]}>
                     • {med.name || med} - {med.dose} {med.route} {med.frequency}
                   </Text>
                 ))
             ) : (
-              <Text style={styles.criticalCardValue}>No critical medications</Text>
+              <Text style={[styles.criticalCardValue, isSmallPhone && styles.criticalCardValueSmall]}>No critical medications</Text>
             )}
           </Card>
 
           {/* Transfer Reason */}
-          <Card style={[styles.criticalCard, { borderLeftColor: '#06b6d4', borderLeftWidth: 4 }]}>
-            <Text style={styles.criticalCardTitle}>🚑 Transfer Reason</Text>
-            <Text style={styles.criticalCardValue}>{transfer.critical?.transferReason || transfer.transfer?.reason || 'N/A'}</Text>
+          <Card style={[styles.criticalCard, { borderLeftColor: '#06b6d4', borderLeftWidth: 4 }, isSmallPhone && styles.criticalCardSmall]}>
+            <Text style={[styles.criticalCardTitle, isSmallPhone && styles.criticalCardTitleSmall]}>Transfer Reason</Text>
+            <Text style={[styles.criticalCardValue, isSmallPhone && styles.criticalCardValueSmall]}>{transfer.critical?.transferReason || transfer.transfer?.reason || 'N/A'}</Text>
           </Card>
         </View>
 
         {/* Patient Information */}
-        <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>Patient Information</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Name:</Text>
-            <Text style={styles.value}>{transfer.patient?.name || 'N/A'}</Text>
+        <Card style={[styles.card, isSmallPhone && styles.cardSmall, isTablet && styles.cardTablet]}>
+          <Text style={[styles.sectionTitle, isSmallPhone && styles.sectionTitleSmall, isTablet && styles.sectionTitleTablet]}>Patient Information</Text>
+          <View style={[styles.row, isSmallPhone && styles.rowSmall]}>
+            <Text style={[styles.label, isSmallPhone && styles.labelSmall]}>Name:</Text>
+            <Text style={[styles.value, isSmallPhone && styles.valueSmall]}>{transfer.patient?.name || 'N/A'}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>ID (MRN):</Text>
-            <Text style={styles.value}>{transfer.patient?.patientID || 'N/A'}</Text>
+          <View style={[styles.row, isSmallPhone && styles.rowSmall]}>
+            <Text style={[styles.label, isSmallPhone && styles.labelSmall]}>ID (MRN):</Text>
+            <Text style={[styles.value, isSmallPhone && styles.valueSmall]}>{transfer.patient?.patientID || 'N/A'}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Age:</Text>
-            <Text style={styles.value}>{transfer.patient?.age || 'N/A'}</Text>
+          <View style={[styles.row, isSmallPhone && styles.rowSmall]}>
+            <Text style={[styles.label, isSmallPhone && styles.labelSmall]}>Age:</Text>
+            <Text style={[styles.value, isSmallPhone && styles.valueSmall]}>{transfer.patient?.age || 'N/A'}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Gender:</Text>
-            <Text style={styles.value}>{transfer.patient?.gender || 'N/A'}</Text>
+          <View style={[styles.row, isSmallPhone && styles.rowSmall]}>
+            <Text style={[styles.label, isSmallPhone && styles.labelSmall]}>Gender:</Text>
+            <Text style={[styles.value, isSmallPhone && styles.valueSmall]}>{transfer.patient?.gender || 'N/A'}</Text>
           </View>
           {transfer.patient?.dateOfBirth && (
-            <View style={styles.row}>
-              <Text style={styles.label}>DOB:</Text>
-              <Text style={styles.value}>{new Date(transfer.patient.dateOfBirth).toLocaleDateString('en-IN')}</Text>
+            <View style={[styles.row, isSmallPhone && styles.rowSmall]}>
+              <Text style={[styles.label, isSmallPhone && styles.labelSmall]}>DOB:</Text>
+              <Text style={[styles.value, isSmallPhone && styles.valueSmall]}>{new Date(transfer.patient.dateOfBirth).toLocaleDateString('en-IN')}</Text>
             </View>
           )}
           {transfer.patient?.phone && (
-            <View style={styles.row}>
-              <Text style={styles.label}>Phone:</Text>
-              <Text style={styles.value}>{transfer.patient.phone}</Text>
+            <View style={[styles.row, isSmallPhone && styles.rowSmall]}>
+              <Text style={[styles.label, isSmallPhone && styles.labelSmall]}>Phone:</Text>
+              <Text style={[styles.value, isSmallPhone && styles.valueSmall]}>{transfer.patient.phone}</Text>
             </View>
           )}
         </Card>
 
         {/* PATIENT VERIFICATION - Safety Check */}
-        <Card style={styles.verificationCard}>
+        <Card style={[styles.verificationCard, isSmallPhone && styles.verificationCardSmall, isTablet && styles.verificationCardTablet]}>
           <View style={styles.verificationHeader}>
             <MaterialIcons name="verified-user" size={24} color="#059669" />
-            <Text style={styles.verificationTitle}>Patient Verification Required</Text>
+            <Text style={[styles.verificationTitle, isSmallPhone && styles.verificationTitleSmall]}>Patient Verification Required</Text>
           </View>
-          <Text style={styles.verificationText}>
-            ⚠️ Before proceeding, please verify this is the correct patient by checking:
+          <Text style={[styles.verificationText, isSmallPhone && styles.verificationTextSmall]}>
+            Before proceeding, please verify this is the correct patient by checking:
           </Text>
           <View style={styles.verificationChecklist}>
-            <Text style={styles.checklistItem}>
-              ✓ Patient name matches: <Text style={styles.bold}>{transfer.patient?.name}</Text>
+            <Text style={[styles.checklistItem, isSmallPhone && styles.checklistItemSmall]}>
+              Patient name matches: <Text style={styles.bold}>{transfer.patient?.name}</Text>
             </Text>
-            <Text style={styles.checklistItem}>
-              ✓ MRN matches: <Text style={styles.bold}>{transfer.patient?.patientID}</Text>
+            <Text style={[styles.checklistItem, isSmallPhone && styles.checklistItemSmall]}>
+              MRN matches: <Text style={styles.bold}>{transfer.patient?.patientID}</Text>
             </Text>
             {transfer.patient?.dateOfBirth && (
-              <Text style={styles.checklistItem}>
-                ✓ Date of birth matches: <Text style={styles.bold}>{new Date(transfer.patient.dateOfBirth).toLocaleDateString('en-IN')}</Text>
+              <Text style={[styles.checklistItem, isSmallPhone && styles.checklistItemSmall]}>
+                Date of birth matches: <Text style={styles.bold}>{new Date(transfer.patient.dateOfBirth).toLocaleDateString('en-IN')}</Text>
               </Text>
             )}
-            <Text style={styles.checklistItem}>
-              ✓ Age matches: <Text style={styles.bold}>{transfer.patient?.age} years</Text>
+            <Text style={[styles.checklistItem, isSmallPhone && styles.checklistItemSmall]}>
+              Age matches: <Text style={styles.bold}>{transfer.patient?.age} years</Text>
             </Text>
           </View>
           <TouchableOpacity
@@ -241,46 +250,46 @@ const ReceivedTransferScreen = ({ transferData, onClose, onAcknowledge }) => {
               color={patientVerified ? '#fff' : COLORS.primary}
             />
             <Text style={[styles.verificationButtonText, patientVerified && styles.verificationButtonTextChecked]}>
-              {patientVerified ? 'Patient Verified ✓' : 'I verify this is the correct patient'}
+              {patientVerified ? 'Patient Verified' : 'I verify this is the correct patient'}
             </Text>
           </TouchableOpacity>
         </Card>
 
         {/* Clinical Summary */}
         {transfer.clinical?.summary && (
-          <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>Clinical Summary</Text>
-            <Text style={styles.summaryText}>{transfer.clinical.summary}</Text>
+          <Card style={[styles.card, isSmallPhone && styles.cardSmall, isTablet && styles.cardTablet]}>
+            <Text style={[styles.sectionTitle, isSmallPhone && styles.sectionTitleSmall, isTablet && styles.sectionTitleTablet]}>Clinical Summary</Text>
+            <Text style={[styles.summaryText, isSmallPhone && styles.summaryTextSmall]}>{transfer.clinical.summary}</Text>
           </Card>
         )}
 
         {/* Vitals */}
         {transfer.vitals && Object.keys(transfer.vitals).length > 0 && (
-          <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>Last Vitals</Text>
-            <View style={styles.vitalGrid}>
+          <Card style={[styles.card, isSmallPhone && styles.cardSmall, isTablet && styles.cardTablet]}>
+            <Text style={[styles.sectionTitle, isSmallPhone && styles.sectionTitleSmall, isTablet && styles.sectionTitleTablet]}>Last Vitals</Text>
+            <View style={[styles.vitalGrid, isSmallPhone && styles.vitalGridSmall]}>
               {transfer.vitals.bloodPressure && (
-                <View style={styles.vitalItem}>
-                  <Text style={styles.vitalLabel}>BP</Text>
-                  <Text style={styles.vitalValue}>{transfer.vitals.bloodPressure}</Text>
+                <View style={[styles.vitalItem, isSmallPhone && styles.vitalItemSmall]}>
+                  <Text style={[styles.vitalLabel, isSmallPhone && styles.vitalLabelSmall]}>BP</Text>
+                  <Text style={[styles.vitalValue, isSmallPhone && styles.vitalValueSmall]}>{transfer.vitals.bloodPressure}</Text>
                 </View>
               )}
               {transfer.vitals.pulse && (
-                <View style={styles.vitalItem}>
-                  <Text style={styles.vitalLabel}>Pulse</Text>
-                  <Text style={styles.vitalValue}>{transfer.vitals.pulse}</Text>
+                <View style={[styles.vitalItem, isSmallPhone && styles.vitalItemSmall]}>
+                  <Text style={[styles.vitalLabel, isSmallPhone && styles.vitalLabelSmall]}>Pulse</Text>
+                  <Text style={[styles.vitalValue, isSmallPhone && styles.vitalValueSmall]}>{transfer.vitals.pulse}</Text>
                 </View>
               )}
               {transfer.vitals.spo2 && (
-                <View style={styles.vitalItem}>
-                  <Text style={styles.vitalLabel}>SpO₂</Text>
-                  <Text style={styles.vitalValue}>{transfer.vitals.spo2}</Text>
+                <View style={[styles.vitalItem, isSmallPhone && styles.vitalItemSmall]}>
+                  <Text style={[styles.vitalLabel, isSmallPhone && styles.vitalLabelSmall]}>SpO₂</Text>
+                  <Text style={[styles.vitalValue, isSmallPhone && styles.vitalValueSmall]}>{transfer.vitals.spo2}</Text>
                 </View>
               )}
               {transfer.vitals.temperature && (
-                <View style={styles.vitalItem}>
-                  <Text style={styles.vitalLabel}>Temp</Text>
-                  <Text style={styles.vitalValue}>{transfer.vitals.temperature}</Text>
+                <View style={[styles.vitalItem, isSmallPhone && styles.vitalItemSmall]}>
+                  <Text style={[styles.vitalLabel, isSmallPhone && styles.vitalLabelSmall]}>Temp</Text>
+                  <Text style={[styles.vitalValue, isSmallPhone && styles.vitalValueSmall]}>{transfer.vitals.temperature}</Text>
                 </View>
               )}
             </View>
@@ -288,15 +297,15 @@ const ReceivedTransferScreen = ({ transferData, onClose, onAcknowledge }) => {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, isSmallPhone && styles.actionButtonsSmall, isTablet && styles.actionButtonsTablet]}>
           <Button
-            title="📋 View Transfer History"
+            title="View Transfer History"
             onPress={() => setShowHistory(true)}
             variant="secondary"
             size="lg"
           />
           <Button
-            title={patientVerified ? "✓ Acknowledge Receipt" : "🔒 Verify Patient First"}
+            title={patientVerified ? "Acknowledge Receipt" : "Verify Patient First"}
             onPress={() => patientVerified && setShowAcknowledgeForm(true)}
             variant={patientVerified ? "primary" : "disabled"}
             size="lg"
@@ -397,12 +406,22 @@ const ReceivedTransferScreen = ({ transferData, onClose, onAcknowledge }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F2F7FA',
+  },
+  containerTablet: {
+    paddingHorizontal: SPACING.xl,
+  },
+  containerLarge: {
+    paddingHorizontal: SPACING.xxl,
   },
   criticalSection: {
-    backgroundColor: '#7f1d1d',
+    backgroundColor: '#7a2c2c',
     padding: SPACING.lg,
     marginBottom: SPACING.lg,
+  },
+  criticalSectionSmall: {
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
   },
   criticalHeader: {
     flexDirection: 'row',
@@ -410,89 +429,285 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   criticalTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fff',
     marginLeft: SPACING.md,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  criticalTitleSmall: {
+    fontSize: 14,
+    letterSpacing: 0.3,
+    marginLeft: SPACING.sm,
   },
   criticalCard: {
     marginBottom: SPACING.md,
     backgroundColor: '#fff',
     borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  criticalCardSmall: {
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
   criticalCardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0E4A7C',
     marginBottom: SPACING.sm,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  criticalCardTitleSmall: {
+    fontSize: 11,
+    marginBottom: SPACING.xs,
+    letterSpacing: 0.2,
   },
   criticalCardValue: {
-    fontSize: 16,
-    color: '#374151',
-    lineHeight: 24,
+    fontSize: 12,
+    color: '#0E4A7C',
+    lineHeight: 20,
     marginVertical: SPACING.xs,
+    fontWeight: '500',
+  },
+  criticalCardValueSmall: {
+    fontSize: 11,
+    lineHeight: 18,
+    marginVertical: 2,
   },
   card: {
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.md,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  cardSmall: {
+    marginHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+  },
+  cardTablet: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0E4A7C',
     marginBottom: SPACING.md,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  sectionTitleSmall: {
+    fontSize: 13,
+    marginBottom: SPACING.sm,
+    letterSpacing: 0.2,
+  },
+  sectionTitleTablet: {
+    fontSize: 18,
+    marginBottom: SPACING.lg,
+    letterSpacing: 0.4,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#C2E1F6',
+  },
+  rowSmall: {
+    paddingVertical: SPACING.sm,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.textHint,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5A7388',
+    letterSpacing: 0.3,
+  },
+  labelSmall: {
+    fontSize: 11,
+    letterSpacing: 0.2,
   },
   value: {
-    fontSize: 16,
-    color: COLORS.text,
+    fontSize: 13,
+    color: '#0E4A7C',
     flex: 1,
     textAlign: 'right',
+    fontWeight: '600',
+  },
+  valueSmall: {
+    fontSize: 12,
   },
   summaryText: {
-    fontSize: 16,
-    color: COLORS.text,
-    lineHeight: 24,
+    fontSize: 13,
+    color: '#0E4A7C',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  summaryTextSmall: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   vitalGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.md,
   },
+  vitalGridSmall: {
+    gap: SPACING.sm,
+  },
   vitalItem: {
     flex: 1,
     minWidth: 100,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#E8F1F8',
     padding: SPACING.md,
     borderRadius: 8,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C2E1F6',
+  },
+  vitalItemSmall: {
+    minWidth: 80,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
   vitalLabel: {
-    fontSize: 14,
-    color: COLORS.textHint,
-    fontWeight: '600',
+    fontSize: 11,
+    color: '#5A7388',
+    fontWeight: '700',
     marginBottom: SPACING.xs,
+    letterSpacing: 0.2,
+  },
+  vitalLabelSmall: {
+    fontSize: 10,
+    marginBottom: 2,
   },
   vitalValue: {
-    fontSize: 24,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0E4A7C',
+  },
+  vitalValueSmall: {
+    fontSize: 14,
+  },
+  verificationCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D5E7F4',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  verificationCardSmall: {
+    marginHorizontal: SPACING.sm,
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+  },
+  verificationCardTablet: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
+  },
+  verificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  verificationTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0E4A7C',
+    marginLeft: SPACING.sm,
+    letterSpacing: 0.3,
+  },
+  verificationTitleSmall: {
+    fontSize: 12,
+    marginLeft: SPACING.xs,
+    letterSpacing: 0.2,
+  },
+  verificationText: {
+    fontSize: 12,
+    color: '#5A7388',
+    marginBottom: SPACING.md,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  verificationTextSmall: {
+    fontSize: 11,
+    marginBottom: SPACING.sm,
+    lineHeight: 16,
+  },
+  verificationChecklist: {
+    marginBottom: SPACING.md,
+  },
+  checklistItem: {
+    fontSize: 12,
+    color: '#0E4A7C',
+    marginBottom: SPACING.sm,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  checklistItemSmall: {
+    fontSize: 11,
+    marginBottom: SPACING.xs,
+    lineHeight: 16,
+  },
+  bold: {
+    fontWeight: '800',
+    color: '#0E4A7C',
+  },
+  verificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderWidth: 2,
+    borderColor: '#0E4A7C',
+    borderRadius: 8,
+    backgroundColor: '#F8FCFF',
+  },
+  verificationButtonChecked: {
+    backgroundColor: '#0E4A7C',
+    borderColor: '#0E4A7C',
+  },
+  verificationButtonText: {
+    marginLeft: SPACING.md,
+    fontSize: 13,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: '#0E4A7C',
+    letterSpacing: 0.2,
+  },
+  verificationButtonTextChecked: {
+    color: '#FFFFFF',
   },
   actionButtons: {
     marginHorizontal: SPACING.md,
     marginVertical: SPACING.lg,
     gap: SPACING.md,
+  },
+  actionButtonsSmall: {
+    marginHorizontal: SPACING.sm,
+    marginVertical: SPACING.md,
+    gap: SPACING.sm,
+  },
+  actionButtonsTablet: {
+    marginHorizontal: SPACING.lg,
+    marginVertical: SPACING.xl,
+    gap: SPACING.lg,
   },
   closeButton: {
     marginHorizontal: SPACING.md,
